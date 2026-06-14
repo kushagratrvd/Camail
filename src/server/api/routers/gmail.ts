@@ -158,9 +158,19 @@ export const gmailRouter = createTRPCRouter({
 
   refreshInbox: publicProcedure.mutation(async () => {
     const tenant = getTenant();
-    const result = await tenant.gmail.api.threads.list({ maxResults: 50 });
+    
+    const result = await tenant.gmail.api.messages.list({ maxResults: 50 });
+    
+    if (result.messages) {
+      await Promise.all(
+        result.messages.map((msg) => 
+          msg.id ? tenant.gmail.api.messages.get({ id: msg.id, format: "full" }).catch(() => null) : null
+        )
+      );
+    }
+
     return {
-      synced: result.threads?.length ?? 0,
+      synced: result.messages?.length ?? 0,
     };
   }),
 
