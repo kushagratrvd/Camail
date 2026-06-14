@@ -16,7 +16,6 @@ export async function GET(req: NextRequest) {
     const state = req.nextUrl.searchParams.get('state');
     const error = req.nextUrl.searchParams.get('error');
 
-    // Get the expected state from the cookie set during /api/connect
     const expectedState = req.cookies.get('oauth_state')?.value;
 
     if (error) {
@@ -57,7 +56,6 @@ export async function GET(req: NextRequest) {
             { headers: { 'Content-Type': 'text/html' } }
         );
         
-        // Clear the state cookie after successful authorization
         response.cookies.delete('oauth_state');
         return response;
         
