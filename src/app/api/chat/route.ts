@@ -2,7 +2,7 @@ import { streamText, type UIMessage, convertToModelMessages, stepCountIs, tool }
 import { google } from '@ai-sdk/google';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
-import { getTenantId } from '@/server/lib/tenant';
+import { getTenantId, getTenant } from '@/server/lib/tenant';
 import { z } from 'zod';
 
 export const maxDuration = 300;
@@ -11,9 +11,14 @@ export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
 
   const tenantId = await getTenantId();
+  if (!tenantId) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
+  const syncedCorsair = await getTenant();
 
   const corsairToolDefs = buildCorsairToolDefs({ 
-    corsair: corsair as any,
+    corsair: syncedCorsair as any,
     tenantId
   });
 

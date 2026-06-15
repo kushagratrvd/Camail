@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
 		body = text && text.trim() ? text : {};
 	}
 
-	const tenantId = getTenantId();
+	const tenantId = await getTenantId();
 
-	processWebhook(corsair, headers, body, { tenantId })
+	processWebhook(corsair, headers, body, tenantId ? { tenantId } : undefined)
 		.then((result) => {
 			console.info('Plugin Processed:', result.plugin, result.action);
 		})
