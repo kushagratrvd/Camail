@@ -5,13 +5,18 @@ import { useRef, useEffect, useState } from 'react';
 
 export function AiChatPanel() {
   const [input, setInput] = useState('');
-  const { messages, sendMessage } = useChat();
+  const [chatError, setChatError] = useState<string | null>(null);
+  const { messages, sendMessage } = useChat({
+    onError: (error: any) => {
+      setChatError(error.message ?? 'Something went wrong. Please try again.');
+    },
+  });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, chatError]);
 
   return (
     <div className="flex flex-col h-[600px] border border-gray-200 rounded-md p-4">
@@ -44,10 +49,24 @@ export function AiChatPanel() {
         <div ref={messagesEndRef} />
       </div>
 
+      {chatError && (
+        <div className="mb-2 p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm flex items-center justify-between">
+          <span>{chatError}</span>
+          <button 
+            type="button" 
+            onClick={() => setChatError(null)}
+            className="text-red-500 hover:text-red-700 ml-2 font-bold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
+
       <form 
         className="flex gap-2"
         onSubmit={e => {
           e.preventDefault();
+          setChatError(null);
           sendMessage({ text: input });
           setInput('');
         }}

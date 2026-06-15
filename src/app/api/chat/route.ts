@@ -19,33 +19,67 @@ export async function POST(req: Request) {
 
   const corsairToolDefs = buildCorsairToolDefs({ 
     corsair: syncedCorsair as any,
-    tenantId
+    tenantId,
+    setup: false,
   });
 
   const aiTools: Record<string, any> = {};
+  const SKIP_TOOLS = new Set(['list_operations', 'corsair_setup']);
   for (const t of corsairToolDefs) {
+    if (SKIP_TOOLS.has(t.name)) continue;
     aiTools[t.name] = tool({
       description: t.description,
       parameters: z.object(t.shape as z.ZodRawShape),
       execute: async (args: any) => {
+        if (t.name === 'run_script' && args.script && !args.code) {
+          args.code = args.script;
+          delete args.script;
+        }
         const finalArgs = { ...args, tenantId };
         return await t.handler(finalArgs);
       }
     } as any);
   }
 
-  const result = streamText({
-    model: google('gemini-2.5-flash'),
-    messages: await convertToModelMessages(messages),
-    tools: aiTools,
-    system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
+  try {
+    const result = streamText({
+      model: google('gemini-2.5-flash'),
+      messages: await convertToModelMessages(messages),
+      tools: aiTools,
+      system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
-Always call the 'corsair_setup' tool first if you are unsure of the authentication status.
-Then use 'list_operations' to find available tools.
-Finally use 'run_script' to execute operations.
-Keep your responses concise and friendly.`,
-    stopWhen: stepCountIs(10),
-  });
 
-  return result.toUIMessageStreamResponse();
+IMPORTANT RULES:
+- Your integrations are already configured. No setup is needed.
+- Available Gmail operations: messages.list, messages.get, messages.send, messages.delete, messages.modify, messages.batchModify, messages.trash, messages.untrash, labels.list, labels.get, labels.create, labels.update, labels.delete, drafts.list, drafts.get, drafts.create, drafts.update, drafts.delete, drafts.send, threads.list, threads.get, threads.modify, threads.delete, threads.trash, threads.untrash.
+- Available Calendar operations: events.create, events.get, events.getMany, events.update, events.delete, calendar.getAvailability.
+- Assume UTC+5:30 (Asia/Kolkata) as default unless specified by the user. Always add the proper timezone indicator to any dates/times you generate for calendar events.
+- Use 'run_script' to execute operations.
+- CRITICAL FOR RUN_SCRIPT: If you want to read or fetch data, your script MUST explicitly use the \`return\` keyword at the top level (e.g. \`return await corsair.gmail.api...\`). Otherwise, it will return null!
+- For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: btoa(emailContent).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') })\`
+- For creating events, Corsair's schema expects the payload in \`event\`. Example: \`corsair.googlecalendar.api.events.create({ calendarId: 'primary', event: { summary: '...', start: { dateTime: '...' }, end: { dateTime: '...' } } })\`
+- The run_script tool often returns "null" for write operations (e.g. sending an email). This is normal behavior — assume success for write operations (send, create, delete, modify) if they return null.
+- NEVER retry the same tool call more than once. If a tool returns "null" or an unexpected result, inform the user and move on.
+- Keep your responses concise and friendly.`,
+      stopWhen: stepCountIs(5),
+    });
+
+    return result.toUIMessageStreamResponse();
+  } catch (error: any) {
+    console.error('[Chat API Error]', error);
+
+    const isQuotaError = error?.statusCode === 429
+      || error?.lastError?.statusCode === 429
+      || error?.message?.includes('quota')
+      || error?.message?.includes('RESOURCE_EXHAUSTED');
+
+    const message = isQuotaError
+      ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
+      : '❌ Something went wrong. Please try again.';
+
+    return new Response(
+      message,
+      { status: isQuotaError ? 429 : 500, headers: { 'Content-Type': 'text/plain' } }
+    );
+  }
 }

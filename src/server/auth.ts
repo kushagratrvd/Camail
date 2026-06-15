@@ -4,7 +4,6 @@ import { db } from "./db";
 import { env } from "@/env";
 import * as schema from "./db/schema";
 import * as authSchema from "./db/auth-schema";
-
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
@@ -23,12 +22,8 @@ export const auth = betterAuth({
             scope: [
                 "openid",
                 "profile",
-                "email",
-                "https://www.googleapis.com/auth/gmail.modify",
-                "https://www.googleapis.com/auth/calendar"
-            ],
-            accessType: "offline",
-            prompt: "consent"
+                "email"
+            ]
         }
     },
     baseURL: env.BETTER_AUTH_URL,

@@ -25,6 +25,16 @@ export default function Home() {
           ) : session ? (
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
               <span className="muted">Logged in as {session.user.name}</span>
+              <a href="/api/corsair/connect" className="button" style={{
+                background: "#000",
+                color: "#fff",
+                padding: "0.25rem 0.75rem",
+                borderRadius: "0.25rem",
+                textDecoration: "none",
+                fontSize: "0.875rem"
+              }}>
+                Connect Integrations
+              </a>
               <button type="button" className="link" onClick={() => signOut()}>
                 Sign Out
               </button>
