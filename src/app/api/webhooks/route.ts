@@ -6,6 +6,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/server/db';
 import { users } from '@/server/db/auth-schema';
 import { eq } from 'drizzle-orm';
+import { inngest } from '@/inngest/client';
 
 export async function POST(req: NextRequest) {
 	const url = new URL(req.url);
@@ -43,24 +44,16 @@ export async function POST(req: NextRequest) {
 	}
 
     try {
-        const result = await processWebhook(
-            corsair,
-            headers,
-            body,
-            tenantId ? { tenantId } : undefined
-        );
-
-        if (result.plugin) {
-            console.log(`[Webhooks] Handled by ${result.plugin}.${result.action}`);
-        } else {
-            console.warn(`[Webhooks] Unmatched webhook received.`);
-        }
+        await inngest.send({
+            name: 'gmail.webhook.received',
+            data: {
+                activeTenantId: tenantId,
+                headersObj: headers,
+                body: body
+            }
+        });
     } catch (e: any) {
-        if (e.message && e.message.includes('Account not found for tenant')) {
-            // Silently ignore stale webhooks for deleted accounts to avoid log spam
-        } else {
-            console.error(`[Webhooks] Error processing webhook:`, e);
-        }
+        console.error(`[Webhooks] Error forwarding webhook to Inngest:`, e);
     }
 
 	return new NextResponse(null, { status: 200 });
