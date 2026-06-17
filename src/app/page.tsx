@@ -4,9 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 import { useChat } from '@ai-sdk/react';
 import { api } from "@/trpc/react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Home() {
   const { data: session, isPending } = useSession();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const currentChatId = searchParams.get('chatId');
+  const activeChatId = useRef<string | null>(currentChatId);
+
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
   
@@ -16,16 +22,88 @@ export default function Home() {
     },
   });
 
-  const { data: history, isSuccess } = api.chat.getChatHistory.useQuery(undefined, {
-    enabled: !!session,
+  const { data: history, isSuccess, isFetching } = api.chat.getChatHistory.useQuery({ chatId: currentChatId || undefined }, {
+    enabled: !!session && !!currentChatId,
     refetchOnWindowFocus: false,
   });
 
+  const { mutate: saveChat } = api.chat.saveChatHistory.useMutation();
+  const historyLoaded = useRef(false);
+  const utils = api.useUtils();
+
+  // Handle URL changes to load different chats
   useEffect(() => {
-    if (isSuccess && history && history.length > 0) {
-      setMessages(history as any);
+    if (currentChatId !== activeChatId.current) {
+      activeChatId.current = currentChatId;
+      historyLoaded.current = false;
+      setMessages([]);
+      if (!currentChatId) {
+        historyLoaded.current = true; // New chat, nothing to load
+      }
     }
-  }, [isSuccess, history, setMessages]);
+  }, [currentChatId, setMessages]);
+
+  useEffect(() => {
+    if (currentChatId && isSuccess && !isFetching && !historyLoaded.current) {
+      historyLoaded.current = true;
+      if (history && history.length > 0) {
+        setMessages(history as any);
+      }
+    } else if (!currentChatId) {
+      historyLoaded.current = true;
+    }
+  }, [isSuccess, isFetching, history, currentChatId, setMessages]);
+
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (messages.length > 0 && session?.user?.id && historyLoaded.current) {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      debounceTimeoutRef.current = setTimeout(() => {
+        let idToSave = activeChatId.current;
+        let isNew = false;
+        
+        if (!idToSave) {
+          idToSave = crypto.randomUUID();
+          activeChatId.current = idToSave;
+          isNew = true;
+        }
+        
+        // Auto-generate a title from the first user message if available
+        const firstUserMsg = messages.find(m => m.role === 'user');
+        let titleText = 'New Chat';
+        if (firstUserMsg) {
+          if (typeof firstUserMsg.content === 'string' && firstUserMsg.content.trim().length > 0) {
+            titleText = firstUserMsg.content;
+          } else if (firstUserMsg.parts) {
+            const textPart = firstUserMsg.parts.find((p: any) => p.type === 'text');
+            if (textPart && typeof textPart.text === 'string') {
+              titleText = textPart.text;
+            }
+          }
+        }
+        const title = titleText.length > 40 ? titleText.substring(0, 40) + '...' : titleText;
+
+        saveChat({ chatId: idToSave, messages, title }, {
+          onSuccess: () => {
+            if (isNew) {
+              utils.chat.getChats.invalidate();
+              router.replace(`/?chatId=${idToSave}`);
+            }
+          }
+        });
+      }, 1000);
+    }
+    
+    return () => {
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+    };
+  }, [messages, session?.user?.id, saveChat, router, utils]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 

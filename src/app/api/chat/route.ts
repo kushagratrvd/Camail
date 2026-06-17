@@ -52,9 +52,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    const safeMessages = messages.filter(m => m.role !== 'tool' && m.role !== 'system');
     const result = streamText({
       model: google('gemini-2.5-flash'),
-      messages: await convertToModelMessages(messages),
+      messages: await convertToModelMessages(safeMessages),
       tools: aiTools,
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
@@ -72,37 +73,12 @@ IMPORTANT RULES:
 - Use 'run_script' to execute operations.
 - CRITICAL FOR RUN_SCRIPT: If you want to read or fetch data, your script MUST explicitly use the \`return\` keyword at the top level (e.g. \`return await corsair.gmail.api...\`). Otherwise, it will return null!
 - To list or fetch calendar events, you MUST use \`events.getMany\` (NOT events.list). Example: \`return await corsair.googlecalendar.api.events.getMany({ calendarId: 'primary', timeMin: new Date().toISOString() })\`
-- For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: btoa(emailContent).replace(/\\+/g, '-').replace(/\\//g, '_').replace(/=+$/, '') })\`
+- For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: Buffer.from(emailContent).toString('base64url') })\`
 - For creating events, Corsair's schema expects the payload in \`event\`. Example: \`corsair.googlecalendar.api.events.create({ calendarId: 'primary', event: { summary: '...', start: { dateTime: '...' }, end: { dateTime: '...' } } })\`
 - The run_script tool often returns "null" for write operations (e.g. sending an email). This is normal behavior — assume success for write operations (send, create, delete, modify) if they return null.
 - NEVER retry the same tool call more than once. If a tool returns "null" or an unexpected result, inform the user and move on.
 - Keep your responses concise and friendly.`,
       stopWhen: stepCountIs(5),
-      onFinish: async ({ response }) => {
-        try {
-          const fullConversation = [...messages, ...response.messages];
-          const existingChat = await db
-            .select()
-            .from(corsairChats)
-            .where(eq(corsairChats.tenantId, tenantId))
-            .limit(1);
-
-          if (existingChat.length > 0) {
-            await db
-              .update(corsairChats)
-              .set({ messages: fullConversation, updatedAt: new Date() })
-              .where(eq(corsairChats.tenantId, tenantId));
-          } else {
-            await db.insert(corsairChats).values({
-              id: crypto.randomUUID(),
-              tenantId,
-              messages: fullConversation,
-            });
-          }
-        } catch (err) {
-          console.error('[Chat Persistence Error]', err);
-        }
-      },
     });
 
     return result.toUIMessageStreamResponse();

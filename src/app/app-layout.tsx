@@ -1,13 +1,22 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { api } from "@/trpc/react";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const currentChatId = searchParams.get('chatId');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+
+  const { data: chats } = api.chat.getChats.useQuery(undefined, {
+    enabled: !!session?.user?.id,
+  });
 
   const hasSynced = useRef(false);
 
@@ -20,11 +29,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const navItems = [
     {
-      name: "Chat",
+      name: "Home",
       href: "/",
       icon: (
         <svg className="w-5 h-5 transition-colors" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
         </svg>
       )
     },
@@ -51,10 +60,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="w-full h-full max-w-[1440px] bg-white rounded-3xl shadow-2xl border border-gray-200/80 flex overflow-hidden relative">
       {/* Sidebar */}
-      <aside className="w-[280px] h-full bg-gray-50 border-r border-gray-200 flex flex-col pt-6 pb-4 px-4 z-10 relative hidden md:flex">
+      <aside className={`h-full bg-gray-50 border-r border-gray-200 flex-col pt-6 pb-4 px-4 z-10 relative transition-all duration-300 ${isSidebarOpen ? 'w-[280px] flex' : 'w-0 hidden'} md:flex overflow-hidden`}>
         {/* Logo */}
-        <div className="flex items-center gap-3 px-2 mb-8 cursor-pointer">
-          <Link href="/" className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-md">
+        <div className="flex items-center gap-3 px-2 mb-6 cursor-pointer whitespace-nowrap">
+          <Link href="/" className="w-8 h-8 flex-shrink-0 rounded-xl bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-md">
             <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
               <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round"></path>
             </svg>
@@ -65,7 +74,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         {/* Search Box */}
-        <div className="px-2 mb-6">
+        <div className="px-2 mb-6 whitespace-nowrap">
           <div className="relative flex items-center w-full h-10 rounded-xl bg-white border border-gray-200 focus-within:ring-2 focus-within:ring-purple-150 focus-within:border-purple-300 transition-all">
             <svg className="w-4 h-4 text-gray-400 absolute left-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
@@ -75,10 +84,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         {/* Main Navigation */}
-        <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-8">
+        <nav className="flex-1 overflow-y-auto custom-scrollbar px-2 space-y-8 min-w-[240px]">
           <ul className="space-y-1">
             {navItems.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href && (!currentChatId || item.name !== 'Home');
               return (
                 <li key={item.name}>
                   <Link 
@@ -98,16 +107,56 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               );
             })}
           </ul>
+
+          {/* Chat History Section */}
+          <div className="pt-2">
+            <div className="flex items-center justify-between px-3 mb-2">
+              <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Recent Chats</h3>
+              <button 
+                onClick={() => router.push('/')}
+                className="text-gray-400 hover:text-purple-500 transition-colors"
+                title="New Chat"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+                </svg>
+              </button>
+            </div>
+            <ul className="space-y-1">
+              {chats?.map((chat) => (
+                <li key={chat.id}>
+                  <Link 
+                    href={`/?chatId=${chat.id}`}
+                    className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium text-sm group ${
+                      currentChatId === chat.id
+                        ? "bg-purple-50 text-purple-700 border border-purple-100 shadow-sm" 
+                        : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                    }`}
+                  >
+                    <span className={currentChatId === chat.id ? "text-purple-600" : "text-gray-400 group-hover:text-purple-500"}>
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
+                      </svg>
+                    </span>
+                    <span className="truncate flex-1">{chat.title}</span>
+                  </Link>
+                </li>
+              ))}
+              {chats?.length === 0 && (
+                <div className="px-3 py-2 text-xs text-gray-400 italic">No recent chats</div>
+              )}
+            </ul>
+          </div>
         </nav>
         
         {/* Upgrade Card */}
-        <div className="mt-auto pt-4 px-2">
+        <div className="mt-auto pt-4 px-2 whitespace-nowrap min-w-[240px]">
           <Link href="/pricing" className="block bg-gradient-to-br from-[#fdfbfb] to-[#ebedee] border border-gray-200 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer">
             <div className="flex items-center gap-2 mb-2 relative z-10">
               <span className="text-sm font-bold text-gray-800">Upgrade to</span>
               <span className="text-[10px] font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
             </div>
-            <p className="text-xs text-gray-500 relative z-10 leading-relaxed">
+            <p className="text-xs text-gray-500 relative z-10 leading-relaxed whitespace-normal">
               Upgrade for image uploads, smarter AI, and more Pro Search.
             </p>
           </Link>
@@ -119,13 +168,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         {/* Top Bar Header */}
         <header className="h-20 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 relative z-20 border-b border-gray-100 bg-white">
           <div className="flex items-center gap-3">
-            {/* Small screen mobile logo */}
-            <div className="md:hidden w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-pink-400 flex items-center justify-center shadow-md">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                <path d="M13 10V3L4 14h7v7l9-11h-7z" strokeLinecap="round" strokeLinejoin="round"></path>
+            {/* Sidebar Toggle Button */}
+            <button 
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="w-10 h-10 rounded-xl border border-gray-200 text-gray-500 hover:text-gray-800 hover:bg-gray-50 flex items-center justify-center transition-colors shadow-sm"
+              title="Toggle Sidebar"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={isSidebarOpen ? "M4 6h16M4 12h16M4 18h16" : "M4 6h16M4 12h16M4 18h16"}></path>
               </svg>
-            </div>
-            <button className="font-bold text-xl tracking-tight text-gray-800">
+            </button>
+            <button className="font-bold text-xl tracking-tight text-gray-800 md:hidden">
               Camail
             </button>
           </div>

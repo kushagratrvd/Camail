@@ -44,6 +44,7 @@ export const corsairChats = pgTable('corsair_chats', {
     id: text('id').primaryKey(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
-    tenantId: text('tenant_id').notNull().unique(),
+    tenantId: text('tenant_id').notNull(),
+    title: text('title').notNull().default('New Chat'),
     messages: jsonb('messages').notNull().default([]),
 });
