@@ -1,79 +1,185 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
-
-import { CalendarPanel } from "@/app/_components/calendar-panel";
-import { GmailPanel } from "@/app/_components/gmail-panel";
-import { AiChatPanel } from "@/app/_components/ai-chat-panel";
+import { useChat } from '@ai-sdk/react';
+import { api } from "@/trpc/react";
 
 export default function Home() {
-  const [tab, setTab] = useState<"ai" | "gmail" | "calendar">("ai");
   const { data: session, isPending } = useSession();
+  const [chatInput, setChatInput] = useState('');
+  const [chatError, setChatError] = useState<string | null>(null);
+  
+  const { messages, setMessages, sendMessage } = useChat({
+    onError: (error: any) => {
+      setChatError(error.message ?? 'Something went wrong. Please try again.');
+    },
+  });
+
+  const { data: history, isSuccess } = api.chat.getChatHistory.useQuery(undefined, {
+    enabled: !!session,
+    refetchOnWindowFocus: false,
+  });
 
   useEffect(() => {
-    if (session) {
-      fetch("/api/auth/sync", { method: "POST" }).catch(console.error);
+    if (isSuccess && history && history.length > 0) {
+      setMessages(history as any);
     }
-  }, [session]);
+  }, [isSuccess, history, setMessages]);
+
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, chatError]);
 
   return (
-    <main>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div>
-          <h1>Camail</h1>
-          <p className="muted">AI assistant for your Gmail and Calendar</p>
-        </div>
+    <div className="flex-1 flex flex-col h-full relative">
+      {/* Center Content Area */}
+      <div className="flex-1 overflow-y-auto px-4 sm:px-8 pb-32 flex flex-col relative z-10 custom-scrollbar">
         
-        <div>
-          {isPending ? (
-            <span className="muted">Loading auth...</span>
-          ) : session ? (
-            <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
-              <span className="muted">Logged in as {session.user.name}</span>
-              <button type="button" className="link" onClick={() => signOut()}>
-                Sign Out
-              </button>
+        {messages.length === 0 ? (
+          <div className="flex-1 flex flex-col items-center justify-center">
+            {/* HeroGreeting */}
+            <div className="text-center max-w-2xl w-full mb-12 transform -translate-y-8">
+              <h1 className="text-4xl sm:text-5xl font-bold mb-3 tracking-tight">
+                <span className="text-gradient">Hello {session?.user?.name ? session.user.name.split(' ')[0] : 'there'}</span>
+              </h1>
+              <h2 className="text-3xl sm:text-4xl font-semibold text-gray-400 tracking-tight">
+                How can I help you today?
+              </h2>
             </div>
-          ) : (
-            <button type="button" className="link" onClick={() => signIn.social({ provider: "google" })}>
-              Sign In with Google
-            </button>
-          )}
-        </div>
+
+            {/* SuggestionCards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 w-full max-w-4xl transform -translate-y-4">
+              <div 
+                onClick={() => {
+                  setChatInput("Read my last 3 unread emails and summarize them.");
+                }}
+                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+              >
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-purple-400/10 blur-[40px] rounded-full pointer-events-none"></div>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 flex items-center justify-center mb-4 relative z-10">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Check Inbox</h3>
+                <p className="text-xs text-gray-400 leading-relaxed relative z-10">Read and summarize your latest unread emails</p>
+              </div>
+
+              <div 
+                onClick={() => {
+                  setChatInput("What is my schedule looking like for tomorrow?");
+                }}
+                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+              >
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-pink-400/10 blur-[40px] rounded-full pointer-events-none"></div>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center mb-4 relative z-10">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Agenda Review</h3>
+                <p className="text-xs text-gray-400 leading-relaxed relative z-10">See your upcoming calendar events for tomorrow</p>
+              </div>
+
+              <div 
+                onClick={() => {
+                  setChatInput("Draft an email to my team about the new project timeline.");
+                }}
+                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+              >
+                <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-indigo-400/10 blur-[40px] rounded-full pointer-events-none"></div>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-600 flex items-center justify-center mb-4 relative z-10">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
+                  </svg>
+                </div>
+                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Draft Communications</h3>
+                <p className="text-xs text-gray-400 leading-relaxed relative z-10">Have the AI write a professional email draft for you</p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 max-w-3xl w-full mx-auto space-y-6 pt-4">
+            {messages.map((message, index) => (
+              <div key={message.id || index} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                <div className={`max-w-[85%] overflow-hidden rounded-2xl px-5 py-3 ${message.role === 'user' ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-50 border border-gray-200 text-gray-800 shadow-sm'}`}>
+                  {message.parts ? message.parts.map((part, i) => {
+                    switch (part.type) {
+                      case 'text':
+                        return <div key={`${message.id}-${i}`} className="whitespace-pre-wrap break-words text-sm leading-relaxed">{typeof part.text === 'string' ? part.text : JSON.stringify(part)}</div>;
+                      default:
+                        return (
+                          <pre key={`${message.id}-${i}`} className="text-[10px] mt-2 bg-black/5 p-2 rounded overflow-x-auto text-left text-gray-500 font-mono">
+                            {JSON.stringify(part, null, 2)}
+                          </pre>
+                        );
+                    }
+                  }) : (
+                    <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">
+                      {typeof message.content === 'string' ? message.content : JSON.stringify(message.content)}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+        )}
       </div>
 
-      <p>
-        {tab === "ai" ? (
-          <strong>AI Chat</strong>
-        ) : (
-          <button type="button" className="link" onClick={() => setTab("ai")}>
-            AI Chat
-          </button>
-        )}
-        {" · "}
-        {tab === "gmail" ? (
-          <strong>Email</strong>
-        ) : (
-          <button type="button" className="link" onClick={() => setTab("gmail")}>
-            Email
-          </button>
-        )}
-        {" · "}
-        {tab === "calendar" ? (
-          <strong>Calendar</strong>
-        ) : (
-          <button type="button" className="link" onClick={() => setTab("calendar")}>
-            Calendar
-          </button>
-        )}
-      </p>
-
-      <hr />
-
-      {tab === "ai" && <AiChatPanel />}
-      {tab === "gmail" && <GmailPanel />}
-      {tab === "calendar" && <CalendarPanel />}
-    </main>
+      {/* ChatInputArea */}
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-white via-white/95 to-transparent z-30">
+        <div className="max-w-3xl w-full mx-auto relative">
+          {chatError && (
+            <div className="absolute -top-12 left-0 right-0 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs flex items-center justify-between shadow-sm">
+              <span>{chatError}</span>
+              <button onClick={() => setChatError(null)} className="text-red-400 hover:text-red-600 font-bold px-2">✕</button>
+            </div>
+          )}
+          
+          <form 
+            className="bg-white border border-gray-200 shadow-lg rounded-full flex items-center p-2 pr-3 transition-shadow focus-within:shadow-xl"
+            onSubmit={e => {
+              e.preventDefault();
+              if (!session) {
+                setChatError("Please sign in first.");
+                return;
+              }
+              setChatError(null);
+              sendMessage({ text: chatInput });
+              setChatInput('');
+            }}
+          >
+            <button type="button" className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+            </button>
+            <input 
+              className="flex-1 bg-transparent border-none focus:ring-0 px-4 py-3 text-gray-700 placeholder-gray-400 text-sm outline-none" 
+              placeholder={session ? "Ask something about your emails or calendar..." : "Sign in to start chatting..."}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              disabled={!session}
+            />
+            <button 
+              type="submit"
+              disabled={!chatInput.trim() || !session}
+              className="w-10 h-10 flex-shrink-0 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 active:scale-95"
+            >
+              <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
+              </svg>
+            </button>
+          </form>
+          <div className="text-center mt-3 text-[10px] text-gray-400">
+            Powered by Corsair MCP and Better Auth. <a className="text-purple-500 hover:underline font-medium" href="#">Documentation</a>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

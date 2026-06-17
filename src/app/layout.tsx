@@ -1,8 +1,10 @@
 import "@/styles/globals.css";
-
 import { type Metadata } from "next";
-
 import { TRPCReactProvider } from "@/trpc/react";
+import { Inter } from "next/font/google";
+import AppLayout from "./app-layout";
+
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Camail",
@@ -15,8 +17,20 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body>
-        <TRPCReactProvider>{children}</TRPCReactProvider>
+      <body 
+        className={`${inter.className} font-sans text-gray-800 h-screen w-full overflow-hidden flex items-center justify-center p-4 sm:p-8 selection:bg-brand-pink selection:text-white`}
+        style={{
+          backgroundImage: "url('/bg.png'), linear-gradient(135deg, #efe7fc 0%, #fbebf3 100%)",
+          backgroundColor: "#efe7fc",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          backgroundRepeat: "no-repeat"
+        }}
+      >
+        <TRPCReactProvider>
+          <AppLayout>{children}</AppLayout>
+        </TRPCReactProvider>
       </body>
     </html>
   );
