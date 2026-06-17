@@ -1,7 +1,9 @@
 import { z } from "zod";
 
-import { getTenant } from "@/server/lib/tenant";
+import { getTenant, getTenantId } from "@/server/lib/tenant";
+import { enforceSyncQuota } from "@/server/lib/quota";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
+import { TRPCError } from "@trpc/server";
 
 const paginationSchema = z.object({
   limit: z.number().min(1).max(100).default(50),
@@ -94,7 +96,10 @@ export const calendarRouter = createTRPCRouter({
       }),
     )
     .query(async ({ input }) => {
-      const tenant = getTenant();
+      const tenant = await getTenant();
+      if (!tenant.googlecalendar) {
+        return [];
+      }
       const weekStart = new Date(input.weekStart);
       const weekEnd = new Date(input.weekEnd);
 
@@ -126,7 +131,14 @@ export const calendarRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const tenant = getTenant();
+      const tenantId = await getTenantId();
+      if (tenantId) {
+        await enforceSyncQuota(tenantId);
+      }
+      const tenant = await getTenant();
+      if (!tenant.googlecalendar) {
+        return { synced: 0 };
+      }
       const result = await tenant.googlecalendar.api.events.getMany({
         calendarId: "primary",
         timeMin: input.weekStart,
@@ -152,7 +164,13 @@ export const calendarRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const tenant = getTenant();
+      const tenant = await getTenant();
+      if (!tenant.googlecalendar) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Google Calendar account not connected. Please connect your Google account in Settings.",
+        });
+      }
       const event = await tenant.googlecalendar.api.events.create({
         calendarId: "primary",
         sendUpdates: "none",
@@ -184,7 +202,13 @@ export const calendarRouter = createTRPCRouter({
       }),
     )
     .mutation(async ({ input }) => {
-      const tenant = getTenant();
+      const tenant = await getTenant();
+      if (!tenant.googlecalendar) {
+        throw new TRPCError({
+          code: "UNAUTHORIZED",
+          message: "Google Calendar account not connected. Please connect your Google account in Settings.",
+        });
+      }
       const event = await tenant.googlecalendar.api.events.create({
         calendarId: "primary",
         sendUpdates: "all",

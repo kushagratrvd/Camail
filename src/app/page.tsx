@@ -7,6 +7,7 @@ import { api } from "@/trpc/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useVoiceInput } from "@/hooks/use-voice-input";
 import { z } from "zod";
+import Link from "next/link";
 
 const CustomKeysSchema = z.object({
   google: z.string().optional(),
@@ -178,7 +179,7 @@ export default function Home() {
               <h1 className="text-4xl sm:text-5xl font-bold mb-3 tracking-tight">
                 <span className="text-gradient">Hello {session?.user?.name ? session.user.name.split(' ')[0] : 'there'}</span>
               </h1>
-              <h2 className="text-3xl sm:text-4xl font-semibold text-gray-400 tracking-tight">
+              <h2 className="text-3xl sm:text-4xl font-semibold text-gray-400 dark:text-gray-500 tracking-tight">
                 How can I help you today?
               </h2>
             </div>
@@ -189,48 +190,48 @@ export default function Home() {
                 onClick={() => {
                   setChatInput("Read my last 3 unread emails and summarize them.");
                 }}
-                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+                className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-purple-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 text-purple-600 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Check Inbox</h3>
-                <p className="text-xs text-gray-400 leading-relaxed relative z-10">Read and summarize your latest unread emails</p>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-2 relative z-10">Check Inbox</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed relative z-10">Read and summarize your latest unread emails</p>
               </div>
 
               <div 
                 onClick={() => {
                   setChatInput("What is my schedule looking like for tomorrow?");
                 }}
-                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+                className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-pink-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 text-pink-600 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-950/50 dark:to-pink-900/50 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Agenda Review</h3>
-                <p className="text-xs text-gray-400 leading-relaxed relative z-10">See your upcoming calendar events for tomorrow</p>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-2 relative z-10">Agenda Review</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed relative z-10">See your upcoming calendar events for tomorrow</p>
               </div>
 
               <div 
                 onClick={() => {
                   setChatInput("Draft an email to my team about the new project timeline.");
                 }}
-                className="bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 transition-all cursor-pointer hover:-translate-y-1"
+                className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-indigo-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 text-indigo-600 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-950/50 dark:to-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                   </svg>
                 </div>
-                <h3 className="font-semibold text-gray-800 text-sm mb-2 relative z-10">Draft Communications</h3>
-                <p className="text-xs text-gray-400 leading-relaxed relative z-10">Have the AI write a professional email draft for you</p>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-200 text-sm mb-2 relative z-10">Draft Communications</h3>
+                <p className="text-xs text-gray-400 dark:text-gray-500 leading-relaxed relative z-10">Have the AI write a professional email draft for you</p>
               </div>
             </div>
           </div>
@@ -240,14 +241,14 @@ export default function Home() {
               const msg = message as UIMessage & { content?: unknown };
               return (
                 <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] overflow-hidden rounded-2xl px-5 py-3 ${msg.role === 'user' ? 'bg-gray-900 text-white shadow-md' : 'bg-gray-50 border border-gray-200 text-gray-800 shadow-sm'}`}>
+                  <div className={`max-w-[85%] overflow-hidden rounded-2xl px-5 py-3 ${msg.role === 'user' ? 'bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 shadow-md' : 'bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'}`}>
                     {msg.parts ? msg.parts.map((part, i) => {
                       switch (part.type) {
                         case 'text':
                           return <div key={`${msg.id}-${i}`} className="whitespace-pre-wrap break-words text-sm leading-relaxed">{typeof part.text === 'string' ? part.text : JSON.stringify(part)}</div>;
                         default:
                           return (
-                            <pre key={`${msg.id}-${i}`} className="text-[10px] mt-2 bg-black/5 p-2 rounded overflow-x-auto text-left text-gray-500 font-mono">
+                            <pre key={`${msg.id}-${i}`} className="text-[10px] mt-2 bg-black/5 dark:bg-white/5 p-2 rounded overflow-x-auto text-left text-gray-500 dark:text-gray-400 font-mono">
                               {JSON.stringify(part, null, 2)}
                             </pre>
                           );
@@ -267,61 +268,61 @@ export default function Home() {
       </div>
 
       {/* ChatInputArea */}
-      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-white via-white/95 to-transparent z-30">
+      <div className="absolute bottom-0 left-0 right-0 p-4 sm:p-6 bg-gradient-to-t from-white dark:from-[#0f0e13] via-white/95 dark:via-[#0f0e13]/95 to-transparent z-30">
         <div className="max-w-3xl w-full mx-auto relative">
           {chatError && (
-            <div className="absolute -top-12 left-0 right-0 p-2 bg-red-50 border border-red-200 rounded-lg text-red-600 text-xs flex items-center justify-between shadow-sm">
+            <div className="absolute -top-12 left-0 right-0 p-2 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-lg text-red-600 dark:text-red-400 text-xs flex items-center justify-between shadow-sm">
               <span>{chatError}</span>
               <button onClick={() => setChatError(null)} className="text-red-400 hover:text-red-600 font-bold px-2">✕</button>
             </div>
           )}
           {showSettings && (
-            <div className="absolute bottom-20 left-0 right-0 bg-white border border-gray-200 shadow-xl rounded-2xl p-4 z-40 transform transition-all">
+            <div className="absolute bottom-20 left-0 right-0 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-xl rounded-2xl p-4 z-40 transform transition-all">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold text-gray-800 text-sm">Provider API Keys (Optional)</h3>
+                <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm">Provider API Keys (Optional)</h3>
                 <button onClick={() => setShowSettings(false)} className="text-gray-400 hover:text-gray-600">✕</button>
               </div>
-              <p className="text-xs text-gray-500 mb-4">
+              <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
                 Keys are stored locally in your browser. All models require a valid API key.
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Google API Key</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Google API Key</label>
                   <input 
                     type="password" 
                     value={customKeys.google || ''}
                     onChange={(e) => handleKeyChange('google', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400"
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 dark:text-gray-100"
                     placeholder="AIza..."
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">OpenAI API Key</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">OpenAI API Key</label>
                   <input 
                     type="password" 
                     value={customKeys.openai || ''}
                     onChange={(e) => handleKeyChange('openai', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400"
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 dark:text-gray-100"
                     placeholder="sk-..."
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Anthropic API Key</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">Anthropic API Key</label>
                   <input 
                     type="password" 
                     value={customKeys.anthropic || ''}
                     onChange={(e) => handleKeyChange('anthropic', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400"
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 dark:text-gray-100"
                     placeholder="sk-ant-..."
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">DeepSeek API Key</label>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">DeepSeek API Key</label>
                   <input 
                     type="password" 
                     value={customKeys.deepseek || ''}
                     onChange={(e) => handleKeyChange('deepseek', e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400"
+                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 dark:text-gray-100"
                     placeholder="sk-..."
                   />
                 </div>
@@ -334,7 +335,7 @@ export default function Home() {
               <select 
                 value={selectedModel}
                 onChange={handleModelChange}
-                className="bg-transparent text-xs font-medium text-gray-500 outline-none cursor-pointer hover:text-gray-800 transition-colors"
+                className="bg-transparent text-xs font-medium text-gray-500 dark:text-gray-400 outline-none cursor-pointer hover:text-gray-800 dark:hover:text-white transition-colors"
               >
                 <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
                 <option value="openai/gpt-5.4">GPT-5.4</option>
@@ -347,7 +348,7 @@ export default function Home() {
               <button 
                 onClick={() => setShowSettings(!showSettings)}
                 type="button"
-                className={`p-1 rounded-md transition-colors ${showSettings ? 'bg-gray-200 text-gray-800' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-600'}`}
+                className={`p-1 rounded-md transition-colors ${showSettings ? 'bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-gray-200' : 'text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 hover:text-gray-600'}`}
                 title="API Key Settings"
               >
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -358,7 +359,7 @@ export default function Home() {
             </div>
             
             <form 
-              className="bg-white border border-gray-200 shadow-lg rounded-full flex items-center p-2 pr-3 transition-shadow focus-within:shadow-xl"
+              className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-full flex items-center p-2 pr-3 transition-shadow focus-within:shadow-xl"
             onSubmit={e => {
               e.preventDefault();
               if (!session) {
@@ -370,13 +371,13 @@ export default function Home() {
               setChatInput('');
             }}
           >
-            <button type="button" className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-colors">
+            <button type="button" className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
               </svg>
             </button>
             <input 
-              className="flex-1 bg-transparent border-none focus:ring-0 px-4 py-3 text-gray-700 placeholder-gray-400 text-sm outline-none" 
+              className="flex-1 bg-transparent border-none focus:ring-0 px-4 py-3 text-gray-700 dark:text-gray-100 placeholder-gray-400 text-sm outline-none" 
               placeholder={session ? "Ask something about your emails or calendar..." : "Sign in to start chatting..."}
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
@@ -388,8 +389,8 @@ export default function Home() {
                 onClick={handleToggleVoice}
                 className={`w-10 h-10 mr-1 flex-shrink-0 flex items-center justify-center rounded-full transition-colors ${
                   voiceState === 'listening' 
-                    ? 'text-red-500 bg-red-50 animate-pulse' 
-                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50'
+                    ? 'text-red-500 bg-red-50 dark:bg-red-950 animate-pulse' 
+                    : 'text-gray-400 hover:text-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'
                 }`}
                 title={voiceState === 'listening' ? 'Stop listening' : 'Start voice input'}
               >
@@ -401,7 +402,7 @@ export default function Home() {
             <button 
               type="submit"
               disabled={!chatInput.trim() || !session}
-              className="w-10 h-10 flex-shrink-0 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-400 text-white rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 active:scale-95"
+              className="w-10 h-10 flex-shrink-0 bg-gray-900 dark:bg-gray-100 hover:bg-gray-800 dark:hover:bg-gray-200 disabled:bg-gray-400 text-white dark:text-gray-900 rounded-full flex items-center justify-center shadow-md transition-transform hover:scale-105 active:scale-95 cursor-pointer"
             >
               <svg className="w-4 h-4 ml-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M14 5l7 7m0 0l-7 7m7-7H3"></path>
@@ -410,7 +411,10 @@ export default function Home() {
           </form>
           </div>
           <div className="text-center mt-3 text-[10px] text-gray-400">
-            Powered by Corsair MCP and Better Auth. <a className="text-purple-500 hover:underline font-medium" href="#">Documentation</a>
+            Powered by Corsair MCP and Better Auth.{" "}
+            <Link className="text-purple-500 hover:underline font-medium mx-1" href="/docs">Documentation</Link> ·{" "}
+            <Link className="text-purple-500 hover:underline font-medium mx-1" href="/privacy">Privacy Policy</Link> ·{" "}
+            <Link className="text-purple-500 hover:underline font-medium mx-1" href="/terms">Terms of Service</Link>
           </div>
         </div>
       </div>

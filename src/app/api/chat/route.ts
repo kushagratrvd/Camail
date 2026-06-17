@@ -3,6 +3,7 @@ import { google } from '@ai-sdk/google';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
+import { validateScriptSafety } from '@/server/lib/quota';
 import { z } from 'zod';
 import { auth } from '@/server/auth';
 import { headers } from 'next/headers';
@@ -54,9 +55,14 @@ export async function POST(req: Request) {
       description: t.description,
       inputSchema: z.object(t.shape as z.ZodRawShape),
       execute: async (args: Record<string, unknown>) => {
-        if (t.name === 'run_script' && typeof args.script === 'string' && !args.code) {
-          args.code = args.script;
-          delete args.script;
+        if (t.name === 'run_script') {
+          if (typeof args.script === 'string' && !args.code) {
+            args.code = args.script;
+            delete args.script;
+          }
+          if (typeof args.code === 'string') {
+            validateScriptSafety(args.code);
+          }
         }
         const finalArgs = { ...args, tenantId };
         return await t.handler(finalArgs as Parameters<typeof t.handler>[0]);

@@ -124,11 +124,17 @@ export function LinkifiedText({ text }: { text: string }) {
     <>
       {parts.map((part, i) =>
         /^https?:\/\//.test(part) ? (
-          <a key={i} href={part} target="_blank" rel="noopener noreferrer">
+          <a
+            key={i}
+            href={part}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-purple-600 hover:text-purple-800 hover:underline break-all inline-block"
+          >
             {part}
           </a>
         ) : (
-          <span key={i}>{part}</span>
+          <span key={i} className="whitespace-pre-wrap break-words">{part}</span>
         ),
       )}
     </>

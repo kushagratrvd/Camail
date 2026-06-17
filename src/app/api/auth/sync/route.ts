@@ -9,10 +9,19 @@ import { createAccountKeyManager } from "corsair/core";
 import { registerGoogleCalendarWebhook, registerGmailWebhook } from "@/server/lib/webhooks";
 import * as crypto from "node:crypto";
 
+import { checkAndIncrementSyncQuota } from "@/server/lib/quota";
+
 export async function POST(req: NextRequest) {
     const tenantId = await getTenantId();
     if (!tenantId) {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const quota = await checkAndIncrementSyncQuota(tenantId);
+    if (!quota.allowed) {
+        return NextResponse.json({ 
+            error: `Daily sync limit reached. You can only sync ${quota.limit} times per day to protect global API quotas.` 
+        }, { status: 429 });
     }
 
     try {
