@@ -4,11 +4,18 @@ import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
 import { z } from 'zod';
+import { auth } from '@/server/auth';
+import { headers } from 'next/headers';
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
   const { messages }: { messages: UIMessage[] } = await req.json();
+
+  const session = await auth.api.getSession({
+    headers: await headers(),
+  });
+  const userName = session?.user?.name || 'User';
 
   const tenantId = await getTenantId();
   if (!tenantId) {
@@ -48,6 +55,11 @@ export async function POST(req: Request) {
       tools: aiTools,
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
+
+USER CONTEXT:
+- The user's name is ${userName}. When writing emails on their behalf, ALWAYS sign off with their actual name (${userName}), not placeholders like "[your name]".
+- The current exact date and time is ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.
+- The current year is ${new Date().getFullYear()}. When scheduling events for "tomorrow" or "next week", use this year unless specified otherwise.
 
 IMPORTANT RULES:
 - Your integrations are already configured. No setup is needed.

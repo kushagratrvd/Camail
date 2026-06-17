@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 
 import { CalendarPanel } from "@/app/_components/calendar-panel";
@@ -10,6 +10,12 @@ import { AiChatPanel } from "@/app/_components/ai-chat-panel";
 export default function Home() {
   const [tab, setTab] = useState<"ai" | "gmail" | "calendar">("ai");
   const { data: session, isPending } = useSession();
+
+  useEffect(() => {
+    if (session) {
+      fetch("/api/auth/sync", { method: "POST" }).catch(console.error);
+    }
+  }, [session]);
 
   return (
     <main>
@@ -25,16 +31,6 @@ export default function Home() {
           ) : session ? (
             <div style={{ display: "flex", gap: "1rem", alignItems: "center" }}>
               <span className="muted">Logged in as {session.user.name}</span>
-              <a href="/api/corsair/connect" className="button" style={{
-                background: "#000",
-                color: "#fff",
-                padding: "0.25rem 0.75rem",
-                borderRadius: "0.25rem",
-                textDecoration: "none",
-                fontSize: "0.875rem"
-              }}>
-                Connect Integrations
-              </a>
               <button type="button" className="link" onClick={() => signOut()}>
                 Sign Out
               </button>

@@ -1,7 +1,7 @@
 import { createCorsairDatabase } from 'corsair/db';
 import { createIntegrationKeyManager } from 'corsair/core';
 import { conn } from '@/server/db';
-import crypto from 'node:crypto';
+import * as crypto from 'node:crypto';
 import { env } from '@/env';
 
 export async function syncGoogleCredentialsFromEnv() {
@@ -26,19 +26,21 @@ export async function syncGoogleCredentialsFromEnv() {
       await database.db.insertInto('corsair_integrations').values({
         id, 
         name: pluginName, 
-        config: JSON.stringify({}),
+        config: {},
         created_at: new Date(), 
         updated_at: new Date(),
       }).execute();
-      integration = { 
-        id, 
-        name: pluginName, 
-        config: JSON.stringify({}), 
-        dek: null,
-        created_at: new Date(),
-        updated_at: new Date(),
-      };
+      
+      const newIntegration = await database.db
+        .selectFrom('corsair_integrations')
+        .selectAll()
+        .where('id', '=', id)
+        .executeTakeFirstOrThrow();
+        
+      integration = newIntegration;
     }
+
+    if (!integration) throw new Error('Integration not found after insert');
 
     const km = createIntegrationKeyManager({
       authType: 'oauth_2', 
