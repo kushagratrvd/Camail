@@ -1,16 +1,20 @@
 import crypto from 'node:crypto';
 import { env } from '@/env';
 import { encryptTenantId } from './crypto';
+import { NgrokTunnelSchema, GmailWatchResponseSchema } from './schemas';
 
 async function getBaseUrl(): Promise<string> {
 	if (env.NODE_ENV === 'development') {
 		try {
 			const res = await fetch('http://127.0.0.1:4040/api/tunnels', { signal: AbortSignal.timeout(500) });
 			if (res.ok) {
-				const data = await res.json();
-				const httpsTunnel = data.tunnels.find((t: any) => t.public_url.startsWith('https://'));
-				if (httpsTunnel) {
-					return httpsTunnel.public_url;
+				const json = await res.json();
+				const parsed = NgrokTunnelSchema.safeParse(json);
+				if (parsed.success) {
+					const httpsTunnel = parsed.data.tunnels.find((t) => t.public_url.startsWith('https://'));
+					if (httpsTunnel) {
+						return httpsTunnel.public_url;
+					}
 				}
 			}
 		} catch (e) {
@@ -93,11 +97,15 @@ export async function registerGmailWebhook(accessToken: string, tenantId: string
 			return null;
 		}
 
-		const data = (await watchRes.json()) as {
-			historyId: string;
-			expiration: string;
-		};
+		const json = await watchRes.json();
+		const parsed = GmailWatchResponseSchema.safeParse(json);
+		
+		if (!parsed.success) {
+			console.error(`[Webhooks] Gmail watch returned invalid schema for tenant ${tenantId}`, parsed.error);
+			return null;
+		}
 
+		const data = parsed.data;
 		const expiration = new Date(Number(data.expiration)).toISOString();
 		console.log(`[Webhooks] Created Gmail watch for tenant ${tenantId}!`);
 		console.log(`   - Topic: ${topicId}`);

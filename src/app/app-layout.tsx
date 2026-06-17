@@ -123,7 +123,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               </button>
             </div>
             <ul className="space-y-1">
-              {chats?.map((chat) => (
+              {(chats as { id: string; title: string }[])?.map((chat) => (
                 <li key={chat.id}>
                   <Link 
                     href={`/?chatId=${chat.id}`}

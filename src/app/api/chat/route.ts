@@ -9,11 +9,24 @@ import { headers } from 'next/headers';
 import { db } from '@/server/db';
 import { corsairChats } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
+import { ChatRequestSchema } from '@/server/lib/schemas';
 
 export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  const { messages }: { messages: UIMessage[] } = await req.json();
+  let body;
+  try {
+    body = await req.json();
+  } catch (e) {
+    return new Response('Invalid JSON', { status: 400 });
+  }
+
+  const parsed = ChatRequestSchema.safeParse(body);
+  if (!parsed.success) {
+    return new Response(JSON.stringify(parsed.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
+  }
+
+  const { messages, model, keys } = parsed.data;
 
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -28,35 +41,47 @@ export async function POST(req: Request) {
   const syncedCorsair = await getTenant();
 
   const corsairToolDefs = buildCorsairToolDefs({ 
-    corsair: syncedCorsair as any,
+    corsair: syncedCorsair as unknown as Parameters<typeof buildCorsairToolDefs>[0]['corsair'],
     tenantId,
     setup: false,
   });
 
-  const aiTools: Record<string, any> = {};
+  const aiTools: NonNullable<Parameters<typeof streamText>[0]['tools']> = {};
   const SKIP_TOOLS = new Set(['list_operations', 'corsair_setup']);
   for (const t of corsairToolDefs) {
     if (SKIP_TOOLS.has(t.name)) continue;
     aiTools[t.name] = tool({
       description: t.description,
-      parameters: z.object(t.shape as z.ZodRawShape),
-      execute: async (args: any) => {
-        if (t.name === 'run_script' && args.script && !args.code) {
+      inputSchema: z.object(t.shape as z.ZodRawShape),
+      execute: async (args: Record<string, unknown>) => {
+        if (t.name === 'run_script' && typeof args.script === 'string' && !args.code) {
           args.code = args.script;
           delete args.script;
         }
         const finalArgs = { ...args, tenantId };
-        return await t.handler(finalArgs);
+        return await t.handler(finalArgs as Parameters<typeof t.handler>[0]);
       }
-    } as any);
+    });
   }
 
   try {
-    const safeMessages = messages.filter(m => m.role !== 'tool' && m.role !== 'system');
+    const safeMessages = (messages as UIMessage[]).filter((m) => m.role !== 'system');
+    
+    const byokOptions: Record<string, { apiKey: string }[]> = {};
+    if (keys.google) byokOptions.google = [{ apiKey: keys.google }];
+    if (keys.openai) byokOptions.openai = [{ apiKey: keys.openai }];
+    if (keys.anthropic) byokOptions.anthropic = [{ apiKey: keys.anthropic }];
+    if (keys.deepseek) byokOptions.deepseek = [{ apiKey: keys.deepseek }];
+
     const result = streamText({
-      model: google('gemini-2.5-flash'),
+      model: model as Parameters<typeof streamText>[0]["model"],
       messages: await convertToModelMessages(safeMessages),
       tools: aiTools,
+      providerOptions: Object.keys(byokOptions).length > 0 ? {
+        gateway: {
+          byok: byokOptions
+        }
+      } : undefined,
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
 
@@ -82,13 +107,17 @@ IMPORTANT RULES:
     });
 
     return result.toUIMessageStreamResponse();
-  } catch (error: any) {
+  } catch (error) {
     console.error('[Chat API Error]', error);
 
-    const isQuotaError = error?.statusCode === 429
-      || error?.lastError?.statusCode === 429
-      || error?.message?.includes('quota')
-      || error?.message?.includes('RESOURCE_EXHAUSTED');
+    const e = error as Record<string, unknown>;
+    const errorMessage = typeof e?.message === 'string' ? e.message : '';
+    const lastError = e?.lastError as Record<string, unknown> | undefined;
+
+    const isQuotaError = e?.statusCode === 429
+      || lastError?.statusCode === 429
+      || errorMessage.includes('quota')
+      || errorMessage.includes('RESOURCE_EXHAUSTED');
 
     const message = isQuotaError
       ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'

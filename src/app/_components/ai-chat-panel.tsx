@@ -7,7 +7,7 @@ export function AiChatPanel() {
   const [input, setInput] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
   const { messages, sendMessage } = useChat({
-    onError: (error: any) => {
+    onError: (error: Error) => {
       setChatError(error.message ?? 'Something went wrong. Please try again.');
     },
   });

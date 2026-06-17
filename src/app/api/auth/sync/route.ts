@@ -34,8 +34,7 @@ export async function POST(req: NextRequest) {
 
                 if (!corsairAccount) {
                     const userAccount = await db.query.accounts.findFirst({
-                        where: (accs, { eq, and }) => 
-                            and(eq(accs.userId, tenantId), eq(accs.providerId, 'google'))
+                        where: and(eq(accounts.userId, tenantId), eq(accounts.providerId, 'google'))
                     });
 
                     if (userAccount) {

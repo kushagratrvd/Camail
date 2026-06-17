@@ -3,7 +3,7 @@ import { corsairChats } from "@/server/db/schema";
 import { getTenantId } from "@/server/lib/tenant";
 import { eq } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
-import { type Message } from "ai";
+import { type UIMessage } from "ai";
 import { z } from "zod";
 
 export const chatRouter = createTRPCRouter({
@@ -45,13 +45,13 @@ export const chatRouter = createTRPCRouter({
         return [];
       }
 
-      return (chat[0].messages as unknown as Message[]) || [];
+      return (chat[0].messages as unknown as UIMessage[]) || [];
     }),
 
   saveChatHistory: publicProcedure
     .input(z.object({
       chatId: z.string(),
-      messages: z.array(z.any()),
+      messages: z.array(z.unknown()),
       title: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {

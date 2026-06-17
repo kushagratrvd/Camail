@@ -29,7 +29,7 @@ export const activityRouter = createTRPCRouter({
         return { events: [], total: 0, totalPages: 0 };
       }
 
-      const accountIds = accounts.map((a) => a.id);
+      const accountIds = accounts.map((a: { id: string }) => a.id);
       const offset = (input.page - 1) * input.limit;
 
       const [countResult] = await ctx.db

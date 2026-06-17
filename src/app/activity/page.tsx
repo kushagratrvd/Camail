@@ -1,9 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "@/trpc/react";
+import { api, type RouterOutputs } from "@/trpc/react";
 import { useSession } from "@/lib/auth-client";
 import Link from "next/link";
+
+type ActivityEvent = {
+  id: string;
+  eventType: string;
+  status: string | null;
+  createdAt: Date | string;
+  updatedAt: Date | string;
+  payload: unknown;
+};
 
 export default function ActivityPage() {
   const { data: session } = useSession();
@@ -18,14 +27,17 @@ export default function ActivityPage() {
     }
   );
 
-  const events = data?.events ?? [];
+  const events = (data?.events ?? []) as ActivityEvent[];
   const total = data?.total ?? 0;
   const totalPages = data?.totalPages ?? 0;
 
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [selectedEvent, setSelectedEvent] = useState<typeof events[0] | null>(null);
 
-  const formatJSON = (json: any) => {
+  const formatJSON = (json: unknown) => {
     try {
+      if (typeof json === 'string') {
+        json = JSON.parse(json);
+      }
       return JSON.stringify(json, null, 2);
     } catch {
       return "Invalid JSON payload";

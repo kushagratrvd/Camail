@@ -1,4 +1,5 @@
 import { corsair } from '@/server/corsair';
+import { GooglePubSubMessageSchema, GmailWatchPayloadSchema } from '@/server/lib/schemas';
 import { processWebhook } from 'corsair';
 import { decryptTenantId } from '@/server/lib/crypto';
 import type { NextRequest } from 'next/server';
@@ -25,20 +26,21 @@ export async function POST(req: NextRequest) {
 	}
 
 	if (!tenantId && body && typeof body === 'object') {
-		if ('message' in body && body.message && typeof body.message === 'object' && 'data' in body.message) {
+		const pubSubParsed = GooglePubSubMessageSchema.safeParse(body);
+		if (pubSubParsed.success) {
 			try {
-				const decoded = Buffer.from(body.message.data as string, 'base64').toString('utf-8');
-				const payload = JSON.parse(decoded);
-				if (payload.emailAddress) {
+				const decoded = Buffer.from(pubSubParsed.data.message.data, 'base64').toString('utf-8');
+				const payloadParsed = GmailWatchPayloadSchema.safeParse(JSON.parse(decoded));
+				if (payloadParsed.success) {
 					const user = await db.query.users.findFirst({
-						where: eq(users.email, payload.emailAddress)
+						where: eq(users.email, payloadParsed.data.emailAddress)
 					});
 					if (user) {
 						tenantId = user.id;
 					}
 				}
 			} catch (e) {
-				console.error('[Webhooks] Failed to decode webhook payload', e);
+				console.error('[Webhooks] Failed to decode or validate webhook payload', e);
 			}
 		}
 	}
@@ -52,7 +54,7 @@ export async function POST(req: NextRequest) {
                 body: body
             }
         });
-    } catch (e: any) {
+    } catch (e) {
         console.error(`[Webhooks] Error forwarding webhook to Inngest:`, e);
     }
 

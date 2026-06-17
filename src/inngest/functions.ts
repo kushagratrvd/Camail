@@ -15,15 +15,16 @@ export const syncGmailWebhook = inngest.createFunction(
   async ({ event, step }) => {
     const { headersObj, body, activeTenantId } = event.data;
 
-    let result: any = null;
+    let result: { plugin?: string | null; action?: string | null } | null = null;
       result = await step.run('run-process-webhook', async () => {
         try {
           const res = await processWebhook(corsair, headersObj, body, {
             tenantId: activeTenantId,
           });
           return res;
-        } catch (err: any) {
-          const errMsg = String(err.message || err).toLowerCase();
+        } catch (err) {
+          const errorObj = err as Error;
+          const errMsg = String(errorObj.message || errorObj).toLowerCase();
           if (errMsg.includes('account not found')) {
             console.warn(`[Webhook] Ignoring orphaned webhook for tenant ${activeTenantId}`);
             return null;
