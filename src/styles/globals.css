@@ -27,10 +27,7 @@
   }
 
   .text-gradient {
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-image: linear-gradient(to right, #b468ff, #ff85c0);
+    color: var(--color-brand-purple);
   }
 }
 

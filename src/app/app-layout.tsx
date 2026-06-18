@@ -329,7 +329,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Link href="/pricing" className="block bg-gradient-to-br from-[#fdfbfb] to-[#ebedee] dark:from-gray-900 dark:to-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer">
               <div className="flex items-center gap-2 mb-2 relative z-10">
                 <span className="text-sm font-bold text-gray-800 dark:text-gray-100">Upgrade to</span>
-                <span className="text-[10px] font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
+                <span className="text-[10px] font-bold text-white bg-purple-600 dark:bg-purple-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 relative z-10 leading-relaxed whitespace-normal">
                 Upgrade for unlimited AI queries, full write sync, and automated calendar scheduling.

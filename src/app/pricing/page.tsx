@@ -112,7 +112,7 @@ export default function PricingPage() {
               }`}
             >
               {plan.primary && (
-                <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-600 to-pink-500 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">
+                <div className="absolute top-0 right-1/2 translate-x-1/2 -translate-y-1/2 bg-purple-600 dark:bg-purple-700 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow">
                   Most Popular
                 </div>
               )}

@@ -97,7 +97,7 @@ export default function SettingsPage() {
           <div className="md:col-span-5 space-y-6">
             {/* Account Profile Card */}
             <div className="bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 rounded-3xl p-6 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+              <div className="absolute top-0 left-0 right-0 h-1 bg-purple-600 dark:bg-purple-500"></div>
               <h2 className="text-sm font-bold text-gray-800 dark:text-gray-100 uppercase tracking-wider mb-4">
                 User Profile
               </h2>
@@ -114,7 +114,7 @@ export default function SettingsPage() {
                       className="w-14 h-14 rounded-full object-cover border-2 border-purple-100 dark:border-purple-900 shadow-sm"
                     />
                   ) : (
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center font-bold text-white dark:text-gray-100 text-lg shadow-sm">
+                    <div className="w-14 h-14 rounded-full bg-purple-600 dark:bg-purple-700 flex items-center justify-center font-bold text-white dark:text-gray-100 text-lg shadow-sm">
                       {getInitials(session.user.name)}
                     </div>
                   )}

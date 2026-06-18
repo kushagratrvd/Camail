@@ -7,7 +7,7 @@ export default function PrivacyPage() {
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 custom-scrollbar">
       <div className="max-w-3xl mx-auto space-y-8 bg-white dark:bg-gray-950 border border-gray-200 dark:border-gray-900 rounded-3xl p-6 sm:p-10 shadow-sm relative">
         {/* Banner */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
+        <div className="absolute top-0 left-0 right-0 h-1 bg-purple-600 dark:bg-purple-500"></div>
 
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-gray-900 dark:text-gray-100 leading-tight">

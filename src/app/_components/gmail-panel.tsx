@@ -79,14 +79,14 @@ export function GmailPanel() {
 
   const getAvatarBg = (initial: string) => {
     const code = initial.charCodeAt(0) % 5;
-    const gradients = [
-      "from-purple-500 to-indigo-500",
-      "from-pink-500 to-rose-500",
-      "from-blue-500 to-teal-500",
-      "from-emerald-500 to-teal-500",
-      "from-amber-500 to-orange-500",
+    const colors = [
+      "bg-purple-600 dark:bg-purple-700",
+      "bg-pink-600 dark:bg-pink-700",
+      "bg-blue-600 dark:bg-blue-700",
+      "bg-emerald-600 dark:bg-emerald-700",
+      "bg-amber-600 dark:bg-amber-700",
     ];
-    return gradients[code] || gradients[0];
+    return colors[code] || colors[0];
   };
 
   return (
@@ -255,7 +255,7 @@ export function GmailPanel() {
                           }`}
                         >
                           <div
-                            className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white bg-gradient-to-br ${getAvatarBg(
+                            className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${getAvatarBg(
                               initial
                             )} shadow-sm`}
                           >
@@ -466,7 +466,7 @@ export function GmailPanel() {
                     <div className="bg-gray-50/50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
                         <div
-                          className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white bg-gradient-to-br ${getAvatarBg(
+                          className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-white ${getAvatarBg(
                             getInitials(selectedEmail.data.from)
                           )} shadow-sm`}
                         >

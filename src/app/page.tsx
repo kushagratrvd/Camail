@@ -213,7 +213,7 @@ export default function Home() {
                 className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-purple-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-950/50 dark:to-purple-900/50 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/50 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"></path>
                   </svg>
@@ -229,7 +229,7 @@ export default function Home() {
                 className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-pink-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-pink-100 to-pink-200 dark:from-pink-950/50 dark:to-pink-900/50 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-pink-100 dark:bg-pink-950/50 text-pink-600 dark:text-pink-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                   </svg>
@@ -245,7 +245,7 @@ export default function Home() {
                 className="bg-gray-50 dark:bg-gray-900/50 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm relative overflow-hidden group hover:bg-gray-100 dark:hover:bg-gray-900 transition-all cursor-pointer hover:-translate-y-1"
               >
                 <div className="absolute -top-12 left-1/2 -translate-x-1/2 w-32 h-24 bg-indigo-400/10 blur-[40px] rounded-full pointer-events-none"></div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-100 to-indigo-200 dark:from-indigo-950/50 dark:to-indigo-900/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 relative z-10">
+                <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-4 relative z-10">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"></path>
                   </svg>
@@ -261,7 +261,7 @@ export default function Home() {
               const msg = message as UIMessage & { content?: unknown };
               return (
                 <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-[85%] overflow-hidden rounded-2xl px-5 py-3 ${msg.role === 'user' ? 'bg-gray-900 dark:bg-gray-800 text-white dark:text-gray-100 shadow-md' : 'bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'}`}>
+                  <div className={`max-w-[85%] overflow-hidden rounded-2xl px-5 py-3 ${msg.role === 'user' ? 'bg-pink-500 dark:bg-pink-600 text-white shadow-md' : 'bg-gray-50 dark:bg-gray-900/60 border border-gray-200 dark:border-gray-800 text-gray-800 dark:text-gray-200 shadow-sm'}`}>
                     {msg.parts ? msg.parts.map((part, i) => {
                       switch (part.type) {
                         case 'text':
