@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, timestamp, integer } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, timestamp, integer, index } from 'drizzle-orm/pg-core';
 
 export const corsairIntegrations = pgTable('corsair_integrations', {
     id: text('id').primaryKey(),
@@ -17,7 +17,9 @@ export const corsairAccounts = pgTable('corsair_accounts', {
     integrationId: text('integration_id').notNull().references(() => corsairIntegrations.id),
     config: jsonb('config').notNull().default({}),
     dek: text('dek'),
-});
+}, (table) => [
+    index('accounts_tenant_idx').on(table.tenantId),
+]);
 
 export const corsairEntities = pgTable('corsair_entities', {
     id: text('id').primaryKey(),
@@ -28,7 +30,9 @@ export const corsairEntities = pgTable('corsair_entities', {
     entityType: text('entity_type').notNull(),
     version: text('version').notNull(),
     data: jsonb('data').notNull().default({}),
-});
+}, (table) => [
+    index('entities_account_idx').on(table.accountId),
+]);
 
 export const corsairEvents = pgTable('corsair_events', {
     id: text('id').primaryKey(),
@@ -38,7 +42,10 @@ export const corsairEvents = pgTable('corsair_events', {
     eventType: text('event_type').notNull(),
     payload: jsonb('payload').notNull().default({}),
     status: text('status'),
-});
+}, (table) => [
+    index('events_account_idx').on(table.accountId),
+    index('events_created_at_idx').on(table.createdAt),
+]);
 
 export const corsairChats = pgTable('corsair_chats', {
     id: text('id').primaryKey(),
@@ -47,7 +54,10 @@ export const corsairChats = pgTable('corsair_chats', {
     tenantId: text('tenant_id').notNull(),
     title: text('title').notNull().default('New Chat'),
     messages: jsonb('messages').notNull().default([]),
-});
+}, (table) => [
+    index('chats_tenant_idx').on(table.tenantId),
+    index('chats_updated_at_idx').on(table.updatedAt),
+]);
 
 export const corsairSyncQuotas = pgTable('corsair_sync_quotas', {
     tenantId: text('tenant_id').primaryKey(),
