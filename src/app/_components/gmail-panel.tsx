@@ -5,6 +5,7 @@ import {
   formatMessageDate,
   formatSender,
   LinkifiedText,
+  parseEmailAddress,
 } from "@/lib/display";
 import { api } from "@/trpc/react";
 
@@ -434,7 +435,7 @@ export function GmailPanel() {
                     <button
                       type="button"
                       onClick={() => {
-                        setTo(formatSender(selectedEmail.data?.from) || "");
+                        setTo(parseEmailAddress(selectedEmail.data?.from || "").email);
                         setSubject(`Re: ${selectedEmail.data?.subject || ""}`);
                         setBody(`\n\n--- On ${selectedEmail.data?.date ? new Date(selectedEmail.data.date).toLocaleString() : ""}, ${selectedEmail.data?.from || ""} wrote:\n> ${selectedEmail.data?.body || ""}`);
                         setShowCompose(true);

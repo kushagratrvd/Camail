@@ -1,6 +1,5 @@
 import { calendarRouter } from "@/server/api/routers/calendar";
 import { gmailRouter } from "@/server/api/routers/gmail";
-import { postRouter } from "@/server/api/routers/post";
 import { activityRouter } from "@/server/api/routers/activity";
 import { chatRouter } from "@/server/api/routers/chat";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
@@ -11,7 +10,6 @@ import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
  * All routers added in /api/routers should be manually added here.
  */
 export const appRouter = createTRPCRouter({
-  post: postRouter,
   gmail: gmailRouter,
   calendar: calendarRouter,
   activity: activityRouter,

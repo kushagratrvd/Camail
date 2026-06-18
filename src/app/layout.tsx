@@ -3,6 +3,7 @@ import { type Metadata } from "next";
 import { TRPCReactProvider } from "@/trpc/react";
 import { Inter } from "next/font/google";
 import AppLayout from "./app-layout";
+import { Suspense } from "react";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -29,7 +30,9 @@ export default function RootLayout({
         }}
       >
         <TRPCReactProvider>
-          <AppLayout>{children}</AppLayout>
+          <Suspense fallback={null}>
+            <AppLayout>{children}</AppLayout>
+          </Suspense>
         </TRPCReactProvider>
       </body>
     </html>

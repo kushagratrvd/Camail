@@ -6,7 +6,17 @@ import Link from "next/link";
 export default function DocsPage() {
   const [activeEndpoint, setActiveEndpoint] = useState<string | null>(null);
 
-  const apiEndpoints = [
+  interface ApiEndpoint {
+    path: string;
+    method: string;
+    summary: string;
+    description: string;
+    parameters: { name: string; required: boolean; type: string; desc: string }[];
+    requestBody: string;
+    responses: { status: string; desc: string; example?: string }[];
+  }
+
+  const apiEndpoints: ApiEndpoint[] = [
     {
       path: "/api/chat",
       method: "POST",

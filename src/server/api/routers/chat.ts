@@ -41,11 +41,12 @@ export const chatRouter = createTRPCRouter({
         .where(eq(corsairChats.id, input.chatId))
         .limit(1);
 
-      if (chat.length === 0 || chat[0].tenantId !== tenantId) {
+      const chatRecord = chat[0];
+      if (!chatRecord || chatRecord.tenantId !== tenantId) {
         return [];
       }
 
-      return (chat[0].messages as unknown as UIMessage[]) || [];
+      return (chatRecord.messages as unknown as UIMessage[]) || [];
     }),
 
   saveChatHistory: publicProcedure
@@ -64,7 +65,8 @@ export const chatRouter = createTRPCRouter({
         .where(eq(corsairChats.id, input.chatId))
         .limit(1);
 
-      if (existingChat.length > 0 && existingChat[0].tenantId === tenantId) {
+      const chatRecord = existingChat[0];
+      if (chatRecord && chatRecord.tenantId === tenantId) {
         await ctx.db
           .update(corsairChats)
           .set({ 
