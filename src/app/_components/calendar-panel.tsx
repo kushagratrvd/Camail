@@ -138,7 +138,10 @@ export function CalendarPanel() {
         </div>
 
         <button
-          onClick={() => refreshEvents.mutate()}
+          onClick={() => refreshEvents.mutate({
+            weekStart: week.start.toISOString(),
+            weekEnd: week.end.toISOString(),
+          })}
           disabled={refreshEvents.isPending}
           className="flex items-center gap-2 px-4 py-2 text-xs font-bold text-gray-700 dark:text-gray-200 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 disabled:bg-gray-100 dark:disabled:bg-gray-950 rounded-xl transition-all shadow-sm cursor-pointer"
         >
@@ -345,16 +348,10 @@ export function CalendarPanel() {
                                   {event.attendees.map((att, idx) => (
                                     <span
                                       key={idx}
-                                      className={`text-[10px] px-2.5 py-0.5 rounded-lg border font-semibold ${
-                                        att.responseStatus === "accepted"
-                                          ? "bg-green-50 dark:bg-green-950/20 text-green-700 dark:text-green-300 border-green-200 dark:border-green-900/50"
-                                          : att.responseStatus === "declined"
-                                          ? "bg-red-50 dark:bg-red-950/20 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/50"
-                                          : "bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800"
-                                      }`}
-                                      title={att.email || ""}
+                                      className="text-[10px] px-2.5 py-0.5 rounded-lg border font-semibold bg-gray-50 dark:bg-gray-900 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-800"
+                                      title={att}
                                     >
-                                      {att.displayName || att.email || "Attendee"}
+                                      {att}
                                     </span>
                                   ))}
                                 </div>
