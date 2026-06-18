@@ -7,8 +7,8 @@ export const ChatRequestSchema = z.object({
     google: z.string().optional(),
     openai: z.string().optional(),
     anthropic: z.string().optional(),
-    deepseek: z.string().optional(),
   }).optional().default({}),
+  instructions: z.string().optional(),
 });
 
 export const GoogleWebhookHeadersSchema = z.object({

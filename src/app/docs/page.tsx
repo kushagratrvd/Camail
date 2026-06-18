@@ -35,8 +35,7 @@ export default function DocsPage() {
   "keys": {
     "google": "AIzaSy...",
     "openai": "sk-...",
-    "anthropic": "sk-ant-...",
-    "deepseek": "sk-..."
+    "anthropic": "sk-ant-..."
   }
 }`,
       responses: [

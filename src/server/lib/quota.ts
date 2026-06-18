@@ -89,3 +89,33 @@ export function validateScriptSafety(code: string): void {
     }
   }
 }
+
+export function validatePromptSafety(prompt: string): void {
+  const injectionPatterns = [
+    /ignore\s+(?:the\s+)?(?:previous|system|above)\s+instructions/i,
+    /bypass\s+safety/i,
+    /override\s+(?:the\s+)?system/i,
+    /forget\s+(?:what\s+you\s+were\s+told|previous\s+instructions)/i,
+    /system\s+prompt\s+override/i,
+  ];
+
+  for (const pattern of injectionPatterns) {
+    if (pattern.test(prompt)) {
+      throw new Error("Safety Violation: Request contains potentially unsafe prompt override patterns.");
+    }
+  }
+}
+
+export function validateRestrictedOperations(code: string): void {
+  const restrictedPatterns = [
+    /\.messages\.(?:delete|trash)\b/,
+    /\.threads\.(?:delete|trash)\b/,
+    /\.events\.delete\b/,
+  ];
+
+  for (const pattern of restrictedPatterns) {
+    if (pattern.test(code)) {
+      throw new Error("Safety Violation: Trashing or deleting emails and events is restricted by system safety policies.");
+    }
+  }
+}

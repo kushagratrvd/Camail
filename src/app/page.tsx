@@ -13,7 +13,6 @@ const CustomKeysSchema = z.object({
   google: z.string().optional(),
   openai: z.string().optional(),
   anthropic: z.string().optional(),
-  deepseek: z.string().optional(),
 });
 
 type CustomKeys = z.infer<typeof CustomKeysSchema>;
@@ -62,6 +61,7 @@ export default function Home() {
 
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash');
   const [customKeys, setCustomKeys] = useState<CustomKeys>({});
+  const [customInstructions, setCustomInstructions] = useState('');
   const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
@@ -76,6 +76,9 @@ export default function Home() {
           setCustomKeys(parsed.data);
         }
       }
+
+      const savedInstructions = localStorage.getItem('corsair_custom_instructions');
+      if (savedInstructions) setCustomInstructions(savedInstructions);
     } catch (e) {
       console.error('Failed to parse settings from local storage', e);
     }
@@ -87,7 +90,7 @@ export default function Home() {
     localStorage.setItem('corsair_selected_model', val);
   };
 
-  const handleKeyChange = (provider: 'google' | 'openai' | 'anthropic' | 'deepseek', val: string) => {
+  const handleKeyChange = (provider: 'google' | 'openai' | 'anthropic', val: string) => {
     const newKeys = { ...customKeys, [provider]: val };
     setCustomKeys(newKeys);
     localStorage.setItem('corsair_custom_keys', JSON.stringify(newKeys));
@@ -333,16 +336,6 @@ export default function Home() {
                     placeholder="sk-ant-..."
                   />
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">DeepSeek API Key</label>
-                  <input 
-                    type="password" 
-                    value={customKeys.deepseek || ''}
-                    onChange={(e) => handleKeyChange('deepseek', e.target.value)}
-                    className="w-full bg-gray-50 dark:bg-gray-950 border border-gray-200 dark:border-gray-800 rounded-lg px-3 py-2 text-sm outline-none focus:ring-1 focus:ring-purple-400 text-gray-800 dark:text-gray-100"
-                    placeholder="sk-..."
-                  />
-                </div>
               </div>
             </div>
           )}
@@ -359,7 +352,6 @@ export default function Home() {
                 <option value="openai/gpt-5.2">GPT-5.2</option>
                 <option value="anthropic/claude-opus-4.7">Claude Opus 4.7</option>
                 <option value="anthropic/claude-sonnet-4.6">Claude Sonnet 4.6</option>
-                <option value="deepseek/deepseek-v3.2">DeepSeek V3.2</option>
               </select>
               
               <button 
@@ -384,7 +376,7 @@ export default function Home() {
                 return;
               }
               setChatError(null);
-              sendMessage({ text: chatInput }, { body: { model: selectedModel, keys: customKeys } });
+              sendMessage({ text: chatInput }, { body: { model: selectedModel, keys: customKeys, instructions: customInstructions } });
               setChatInput('');
             }}
           >

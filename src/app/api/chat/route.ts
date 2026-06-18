@@ -5,7 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
-import { validateScriptSafety } from '@/server/lib/quota';
+import { validateScriptSafety, validatePromptSafety, validateRestrictedOperations } from '@/server/lib/quota';
 import { z } from 'zod';
 import { auth } from '@/server/auth';
 import { headers } from 'next/headers';
@@ -16,7 +16,7 @@ import { ChatRequestSchema } from '@/server/lib/schemas';
 
 function getModelInstance(
   modelString: string,
-  keys: { google?: string; openai?: string; anthropic?: string; deepseek?: string }
+  keys: { google?: string; openai?: string; anthropic?: string }
 ) {
   const [provider, modelName] = modelString.split('/');
   if (!provider || !modelName) {
@@ -42,16 +42,6 @@ function getModelInstance(
       const anthropicProvider = createAnthropic({ apiKey });
       return anthropicProvider(modelName);
     }
-    case 'deepseek': {
-      const apiKey = keys.deepseek || process.env.DEEPSEEK_API_KEY;
-      if (!apiKey) throw new Error('Missing DeepSeek API Key');
-      const deepseekProvider = createOpenAI({
-        apiKey,
-        baseURL: 'https://api.deepseek.com/v1',
-      });
-      const mappedModelName = modelName === 'deepseek-v3.2' ? 'deepseek-chat' : modelName;
-      return deepseekProvider(mappedModelName);
-    }
     default:
       throw new Error(`Unsupported provider: ${provider}`);
   }
@@ -72,7 +62,7 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify(parsed.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
-  const { messages, model, keys } = parsed.data;
+  const { messages, model, keys, instructions } = parsed.data;
 
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -107,6 +97,7 @@ export async function POST(req: Request) {
           }
           if (typeof args.code === 'string') {
             validateScriptSafety(args.code);
+            validateRestrictedOperations(args.code);
           }
         }
         const finalArgs = { ...args, tenantId };
@@ -118,6 +109,12 @@ export async function POST(req: Request) {
   try {
     const safeMessages = (messages as UIMessage[]).filter((m) => m.role !== 'system');
     
+    const lastUserMessage = [...safeMessages].reverse().find((m) => m.role === 'user');
+    const content = (lastUserMessage as any)?.content;
+    if (typeof content === 'string') {
+      validatePromptSafety(content);
+    }
+    
     const modelInstance = getModelInstance(model, keys);
 
     const result = streamText({
@@ -127,12 +124,19 @@ export async function POST(req: Request) {
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
 
+TOPIC CONSTRAINT:
+- You must ONLY answer questions or perform tasks related to Google Calendar, Gmail, and managing email/calendar workflows.
+- If the user asks general knowledge questions, programming questions, or any other topic unrelated to Gmail, Google Calendar, or Corsair, politely refuse to answer, stating that you are an assistant dedicated to managing their emails and calendar.
+
 USER CONTEXT:
 - The user's name is ${userName}. When writing emails on their behalf, ALWAYS sign off with their actual name (${userName}), not placeholders like "[your name]".
 - The current exact date and time is ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.
 - The current year is ${new Date().getFullYear()}. When scheduling events for "tomorrow" or "next week", use this year unless specified otherwise.
 
-IMPORTANT RULES:
+${instructions ? `USER-DEFINED INSTRUCTIONS / TEMPLATES:
+${instructions}
+
+` : ''}IMPORTANT RULES:
 - Your integrations are already configured. No setup is needed.
 - Available Gmail operations: messages.list, messages.get, messages.send, messages.delete, messages.modify, messages.batchModify, messages.trash, messages.untrash, labels.list, labels.get, labels.create, labels.update, labels.delete, drafts.list, drafts.get, drafts.create, drafts.update, drafts.delete, drafts.send, threads.list, threads.get, threads.modify, threads.delete, threads.trash, threads.untrash.
 - Available Calendar operations: events.create, events.get, events.getMany, events.update, events.delete, calendar.getAvailability.
@@ -156,18 +160,21 @@ IMPORTANT RULES:
     const errorMessage = typeof e?.message === 'string' ? e.message : '';
     const lastError = e?.lastError as Record<string, unknown> | undefined;
 
+    const isSafetyError = errorMessage.includes('Safety Violation');
     const isQuotaError = e?.statusCode === 429
       || lastError?.statusCode === 429
       || errorMessage.includes('quota')
       || errorMessage.includes('RESOURCE_EXHAUSTED');
 
-    const message = isQuotaError
-      ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
-      : '❌ Something went wrong. Please try again.';
+    const message = isSafetyError
+      ? `⚠️ ${errorMessage}`
+      : isQuotaError
+        ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
+        : '❌ Something went wrong. Please try again.';
 
     return new Response(
       message,
-      { status: isQuotaError ? 429 : 500, headers: { 'Content-Type': 'text/plain' } }
+      { status: isSafetyError ? 400 : (isQuotaError ? 429 : 500), headers: { 'Content-Type': 'text/plain' } }
     );
   }
 }
