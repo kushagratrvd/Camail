@@ -1,5 +1,7 @@
 import { streamText, type UIMessage, convertToModelMessages, stepCountIs, tool } from 'ai';
-import { google } from '@ai-sdk/google';
+import { createGoogleGenerativeAI } from '@ai-sdk/google';
+import { createOpenAI } from '@ai-sdk/openai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
@@ -11,6 +13,49 @@ import { db } from '@/server/db';
 import { corsairChats } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { ChatRequestSchema } from '@/server/lib/schemas';
+
+function getModelInstance(
+  modelString: string,
+  keys: { google?: string; openai?: string; anthropic?: string; deepseek?: string }
+) {
+  const [provider, modelName] = modelString.split('/');
+  if (!provider || !modelName) {
+    throw new Error(`Invalid model format: ${modelString}`);
+  }
+
+  switch (provider) {
+    case 'google': {
+      const apiKey = keys.google || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+      if (!apiKey) throw new Error('Missing Google Gemini API Key');
+      const googleProvider = createGoogleGenerativeAI({ apiKey });
+      return googleProvider(modelName);
+    }
+    case 'openai': {
+      const apiKey = keys.openai || process.env.OPENAI_API_KEY;
+      if (!apiKey) throw new Error('Missing OpenAI API Key');
+      const openaiProvider = createOpenAI({ apiKey });
+      return openaiProvider(modelName);
+    }
+    case 'anthropic': {
+      const apiKey = keys.anthropic || process.env.ANTHROPIC_API_KEY;
+      if (!apiKey) throw new Error('Missing Anthropic API Key');
+      const anthropicProvider = createAnthropic({ apiKey });
+      return anthropicProvider(modelName);
+    }
+    case 'deepseek': {
+      const apiKey = keys.deepseek || process.env.DEEPSEEK_API_KEY;
+      if (!apiKey) throw new Error('Missing DeepSeek API Key');
+      const deepseekProvider = createOpenAI({
+        apiKey,
+        baseURL: 'https://api.deepseek.com/v1',
+      });
+      const mappedModelName = modelName === 'deepseek-v3.2' ? 'deepseek-chat' : modelName;
+      return deepseekProvider(mappedModelName);
+    }
+    default:
+      throw new Error(`Unsupported provider: ${provider}`);
+  }
+}
 
 export const maxDuration = 300;
 
@@ -73,21 +118,12 @@ export async function POST(req: Request) {
   try {
     const safeMessages = (messages as UIMessage[]).filter((m) => m.role !== 'system');
     
-    const byokOptions: Record<string, { apiKey: string }[]> = {};
-    if (keys.google) byokOptions.google = [{ apiKey: keys.google }];
-    if (keys.openai) byokOptions.openai = [{ apiKey: keys.openai }];
-    if (keys.anthropic) byokOptions.anthropic = [{ apiKey: keys.anthropic }];
-    if (keys.deepseek) byokOptions.deepseek = [{ apiKey: keys.deepseek }];
+    const modelInstance = getModelInstance(model, keys);
 
     const result = streamText({
-      model: model as Parameters<typeof streamText>[0]["model"],
+      model: modelInstance,
       messages: await convertToModelMessages(safeMessages),
       tools: aiTools,
-      providerOptions: Object.keys(byokOptions).length > 0 ? {
-        gateway: {
-          byok: byokOptions
-        }
-      } : undefined,
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
 
