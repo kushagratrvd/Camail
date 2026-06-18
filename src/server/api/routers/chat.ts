@@ -59,6 +59,10 @@ export const chatRouter = createTRPCRouter({
       const tenantId = await getTenantId();
       if (!tenantId) return;
 
+      // Cap the stored messages to the last 100 messages to prevent database bloat
+      const MAX_DB_MESSAGES = 100;
+      const messagesToSave = input.messages.slice(-MAX_DB_MESSAGES);
+
       const existingChat = await ctx.db
         .select()
         .from(corsairChats)
@@ -70,7 +74,7 @@ export const chatRouter = createTRPCRouter({
         await ctx.db
           .update(corsairChats)
           .set({ 
-            messages: input.messages, 
+            messages: messagesToSave, 
             updatedAt: new Date(),
             ...(input.title ? { title: input.title } : {})
           })
@@ -80,7 +84,7 @@ export const chatRouter = createTRPCRouter({
           id: input.chatId,
           tenantId,
           title: input.title || 'New Chat',
-          messages: input.messages,
+          messages: messagesToSave,
         });
       }
     }),

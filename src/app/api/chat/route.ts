@@ -117,9 +117,21 @@ export async function POST(req: Request) {
     
     const modelInstance = getModelInstance(model, keys);
 
+    // Limit context window sent to LLM to the last 16 messages to reduce latency/cost.
+    // We adjust the start index forward to a 'user' message to avoid orphaned tool calls/results.
+    const MAX_CONTEXT_MESSAGES = 16;
+    let startIndex = Math.max(0, safeMessages.length - MAX_CONTEXT_MESSAGES);
+    while (startIndex < safeMessages.length && safeMessages[startIndex]?.role !== 'user') {
+      startIndex++;
+    }
+    if (startIndex >= safeMessages.length) {
+      startIndex = Math.max(0, safeMessages.length - 1);
+    }
+    const contextMessages = safeMessages.slice(startIndex);
+
     const result = streamText({
       model: modelInstance,
-      messages: await convertToModelMessages(safeMessages),
+      messages: await convertToModelMessages(contextMessages),
       tools: aiTools,
       system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
 You can read emails, send emails, create calendar events, and more.
