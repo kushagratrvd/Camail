@@ -42,6 +42,7 @@ declare global {
 export function useVoiceInput() {
   const [state, setState] = useState<VoiceState>('idle');
   const [transcript, setTranscript] = useState('');
+  const [error, setError] = useState<string | null>(null);
   const [isSupported, setIsSupported] = useState(true);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
 
@@ -57,6 +58,7 @@ export function useVoiceInput() {
 
         recognition.onstart = () => {
           setState('listening');
+          setError(null);
         };
 
         recognition.onresult = (event: SpeechRecognitionEvent) => {
@@ -74,12 +76,14 @@ export function useVoiceInput() {
         };
 
         recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-          console.error('Voice recognition error:', event.error);
+          console.warn('Voice recognition error event:', event.error);
+          setError(event.error);
           setState('error');
         };
 
         recognition.onend = () => {
-          setState('idle');
+          // If we ended because of an error, preserve the error state
+          setState((prev) => (prev === 'error' ? 'error' : 'idle'));
         };
 
         recognitionRef.current = recognition;
@@ -98,10 +102,11 @@ export function useVoiceInput() {
   const startListening = useCallback(() => {
     if (!recognitionRef.current) return;
     setTranscript('');
+    setError(null);
     try {
       recognitionRef.current.start();
-    } catch (error) {
-      console.error('Error starting speech recognition:', error);
+    } catch (err) {
+      console.error('Error starting speech recognition:', err);
     }
   }, []);
 
@@ -109,8 +114,8 @@ export function useVoiceInput() {
     if (!recognitionRef.current) return;
     try {
       recognitionRef.current.stop();
-    } catch (error) {
-      console.error('Error stopping speech recognition:', error);
+    } catch (err) {
+      console.error('Error stopping speech recognition:', err);
     }
   }, []);
 
@@ -125,6 +130,7 @@ export function useVoiceInput() {
   return {
     state,
     transcript,
+    error,
     isSupported,
     startListening,
     stopListening,

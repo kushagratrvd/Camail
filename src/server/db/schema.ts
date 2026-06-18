@@ -1,4 +1,4 @@
-import { pgTable, text, jsonb, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, jsonb, timestamp, integer } from 'drizzle-orm/pg-core';
 
 export const corsairIntegrations = pgTable('corsair_integrations', {
     id: text('id').primaryKey(),
@@ -47,4 +47,11 @@ export const corsairChats = pgTable('corsair_chats', {
     tenantId: text('tenant_id').notNull(),
     title: text('title').notNull().default('New Chat'),
     messages: jsonb('messages').notNull().default([]),
+});
+
+export const corsairSyncQuotas = pgTable('corsair_sync_quotas', {
+    tenantId: text('tenant_id').primaryKey(),
+    count: integer('count').notNull().default(0),
+    lastReset: text('last_reset').notNull(), // YYYY-MM-DD
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

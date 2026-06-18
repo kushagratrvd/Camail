@@ -1,0 +1,217 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Camail API Documentation",
+    "description": "API specification for Camail, the agentic SaaS workspace email and calendar AI assistant.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "/api",
+      "description": "Base API Route"
+    }
+  ],
+  "paths": {
+    "/chat": {
+      "post": {
+        "summary": "AI Agent Chat & Execution Loop",
+        "description": "Submit multi-turn dialogue messages to interact with the AI assistant. The agent accesses Gmail and Google Calendar tools in-process, executing user intents using the provided Bring-Your-Own-Key (BYOK) LLM keys.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "messages",
+                  "model",
+                  "keys"
+                ],
+                "properties": {
+                  "messages": {
+                    "type": "array",
+                    "description": "Chronological history of UI messages representing the chat log.",
+                    "items": {
+                      "type": "object",
+                      "required": [
+                        "id",
+                        "role",
+                        "content"
+                      ],
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Unique identifier of the message."
+                        },
+                        "role": {
+                          "type": "string",
+                          "enum": [
+                            "user",
+                            "assistant",
+                            "system"
+                          ],
+                          "description": "Sender role in the dialogue loop."
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "Text content of the message prompt or response."
+                        }
+                      }
+                    }
+                  },
+                  "model": {
+                    "type": "string",
+                    "example": "gemini-2.5-flash",
+                    "description": "Target AI language model to perform chat and tool actions."
+                  },
+                  "keys": {
+                    "type": "object",
+                    "description": "User API keys for secure Bring-Your-Own-Key (BYOK) model routing.",
+                    "properties": {
+                      "google": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Google Gemini API key."
+                      },
+                      "openai": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "OpenAI platform API key."
+                      },
+                      "anthropic": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "Anthropic Claude API key."
+                      },
+                      "deepseek": {
+                        "type": "string",
+                        "nullable": true,
+                        "description": "DeepSeek API key."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful streaming chunk response (Server-Sent Events).",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Missing user session credentials."
+          },
+          "429": {
+            "description": "Too Many Requests. API quota limits exceeded."
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/auth/sync": {
+      "post": {
+        "summary": "Sync Integration Credentials",
+        "description": "Triggers manual synchronizations of the user's cached Gmail messages and Google Calendar events from Google Cloud. Checks and increments the daily manual sync quota.",
+        "responses": {
+          "200": {
+            "description": "Synchronization initiated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized. Missing session tenantId."
+          },
+          "429": {
+            "description": "Daily synchronization quota reached (Max 10 syncs/day).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Daily sync limit reached. You can only sync 10 times per day."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Internal Server Error."
+          }
+        }
+      }
+    },
+    "/connect": {
+      "get": {
+        "summary": "Initiate Integration OAuth Pipeline",
+        "description": "Generates OAuth consent flow redirections to link Google Accounts. Redirects the user directly to the Google authorization flow.",
+        "parameters": [
+          {
+            "name": "plugin",
+            "in": "query",
+            "required": true,
+            "description": "Target service plugin identifier.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "gmail",
+                "googlecalendar"
+              ]
+            }
+          },
+          {
+            "name": "tenantId",
+            "in": "query",
+            "required": true,
+            "description": "Current user identifier associated with the request.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "302": {
+            "description": "Redirect pipeline setup successfully. Redirects to Google consent screen."
+          },
+          "400": {
+            "description": "Invalid Request parameters. Missing plugin or tenantId parameters."
+          }
+        }
+      }
+    },
+    "/webhooks": {
+      "post": {
+        "summary": "Google push notifications webhook",
+        "description": "Receiver endpoint for Gmail Pub/Sub messages and Google Calendar push notification webhooks.",
+        "responses": {
+          "200": {
+            "description": "Webhook acknowledgement."
+          }
+        }
+      }
+    }
+  }
+}

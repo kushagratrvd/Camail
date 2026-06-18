@@ -27,11 +27,11 @@ export default function Home() {
   const [chatInput, setChatInput] = useState('');
   const [chatError, setChatError] = useState<string | null>(null);
 
-  const { state: voiceState, transcript, toggleListening, isSupported, stopListening } = useVoiceInput();
+  const { state: voiceState, transcript, error: voiceError, toggleListening, isSupported, stopListening } = useVoiceInput();
   const [baseInput, setBaseInput] = useState('');
 
   const handleToggleVoice = () => {
-    if (voiceState === 'idle') {
+    if (voiceState === 'idle' || voiceState === 'error') {
       setBaseInput(chatInput);
     }
     toggleListening();
@@ -42,6 +42,23 @@ export default function Home() {
       setChatInput((baseInput ? baseInput + ' ' : '') + transcript);
     }
   }, [transcript, voiceState, baseInput]);
+
+  useEffect(() => {
+    if (voiceError) {
+      if (voiceError === 'network') {
+        const isSecure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+        if (!isSecure) {
+          setChatError("Voice input failed. Speech recognition requires a secure HTTPS connection. Please access the application using your ngrok HTTPS tunnel URL.");
+        } else {
+          setChatError("Speech recognition network error. Please verify your internet connection or browser settings.");
+        }
+      } else if (voiceError === 'not-allowed') {
+        setChatError("Microphone access denied. Please verify your browser's microphone permissions.");
+      } else {
+        setChatError(`Voice input error: ${voiceError}`);
+      }
+    }
+  }, [voiceError]);
 
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash');
   const [customKeys, setCustomKeys] = useState<CustomKeys>({});

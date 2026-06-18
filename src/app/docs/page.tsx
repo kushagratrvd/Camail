@@ -1,8 +1,81 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 
 export default function DocsPage() {
+  const [activeEndpoint, setActiveEndpoint] = useState<string | null>(null);
+
+  const apiEndpoints = [
+    {
+      path: "/api/chat",
+      method: "POST",
+      summary: "AI Agent Chat & Execution Loop",
+      description: "Submit multi-turn dialogue messages to interact with the AI assistant. The agent accesses Gmail and Google Calendar tools in-process, executing user intents using the provided Bring-Your-Own-Key (BYOK) LLM keys.",
+      parameters: [],
+      requestBody: `{
+  "messages": [
+    {
+      "id": "msg-1",
+      "role": "user",
+      "content": "Summarize my last 3 unread emails"
+    }
+  ],
+  "model": "gemini-2.5-flash",
+  "keys": {
+    "google": "AIzaSy...",
+    "openai": "sk-...",
+    "anthropic": "sk-ant-...",
+    "deepseek": "sk-..."
+  }
+}`,
+      responses: [
+        { status: "200 OK", desc: "SSE Stream (text/event-stream) of generated AI message chunks." },
+        { status: "401 Unauthorized", desc: "Missing user session credentials." },
+        { status: "429 Too Many Requests", desc: "Daily quota limits exceeded." }
+      ]
+    },
+    {
+      path: "/api/auth/sync",
+      method: "POST",
+      summary: "Sync Integration Credentials",
+      description: "Triggers manual synchronizations of the user's cached Gmail messages and Google Calendar events from Google Cloud. Checks and increments the daily manual sync quota.",
+      parameters: [],
+      requestBody: "None",
+      responses: [
+        { status: "200 OK", desc: "Synchronization initiated successfully.", example: `{\n  "success": true\n}` },
+        { status: "401 Unauthorized", desc: "Missing session tenantId." },
+        { status: "429 Too Many Requests", desc: "Daily synchronization quota reached (Max 10 syncs/day).", example: `{\n  "error": "Daily sync limit reached. You can only sync 10 times per day."\n}` }
+      ]
+    },
+    {
+      path: "/api/connect",
+      method: "GET",
+      summary: "Initiate Integration OAuth Pipeline",
+      description: "Generates OAuth consent flow redirections to link Google Accounts. Redirects the user directly to the Google authorization flow.",
+      parameters: [
+        { name: "plugin", required: true, type: "string (gmail | googlecalendar)", desc: "Target service plugin identifier." },
+        { name: "tenantId", required: true, type: "string", desc: "Current user identifier associated with the request." }
+      ],
+      requestBody: "None",
+      responses: [
+        { status: "302 Found", desc: "Redirect pipeline setup successfully. Redirects to Google consent screen." },
+        { status: "400 Bad Request", desc: "Invalid request parameters. Missing plugin or tenantId." }
+      ]
+    },
+    {
+      path: "/api/webhooks",
+      method: "POST",
+      summary: "Google push notifications webhook",
+      description: "Receiver endpoint for Gmail Pub/Sub messages and Google Calendar push notification webhooks.",
+      parameters: [],
+      requestBody: "Google Cloud Pub/Sub / push body payload (varies by integration)",
+      responses: [
+        { status: "200 OK", desc: "Webhook acknowledgement." }
+      ]
+    }
+  ];
+
   const sections = [
     {
       id: "getting-started",
@@ -96,6 +169,125 @@ export default function DocsPage() {
             <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">
               Yes, hover over a chat in the sidebar, click the three dots, and choose Delete. It deletes the chat thread instantly from the database.
             </p>
+          </div>
+        </div>
+      ),
+    },
+    {
+      id: "api-reference",
+      title: "API Reference",
+      description: "OpenAPI endpoints schema explorer for developer integrations.",
+      content: (
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-purple-50/50 dark:bg-purple-950/20 border border-purple-100 dark:border-purple-900/50 rounded-2xl p-4 gap-4">
+            <div className="text-left">
+              <h4 className="font-bold text-xs text-gray-800 dark:text-gray-200">OpenAPI 3.0 Specification</h4>
+              <p className="text-[11px] text-gray-500 dark:text-gray-400 mt-0.5">Integrate Camail's assistant routes in your own tooling.</p>
+            </div>
+            <a href="/openapi.json" download="openapi.json" className="bg-purple-600 hover:bg-purple-700 text-white font-semibold text-xs px-4.5 py-2.5 rounded-xl shadow-xs transition-all cursor-pointer inline-block text-center whitespace-nowrap">
+              Download spec (openapi.json)
+            </a>
+          </div>
+
+          <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+            Here are the primary HTTP endpoints exposed by Camail. Click on an endpoint to expand its detailed schema:
+          </p>
+
+          <div className="space-y-3">
+            {apiEndpoints.map((ep) => {
+              const isOpen = activeEndpoint === ep.path;
+              const isPost = ep.method === "POST";
+              return (
+                <div key={ep.path} className="border border-gray-200 dark:border-gray-900 rounded-2xl overflow-hidden bg-gray-50/20 dark:bg-gray-950">
+                  <button
+                    onClick={() => setActiveEndpoint(isOpen ? null : ep.path)}
+                    className="w-full px-4 py-3.5 flex items-center justify-between hover:bg-gray-100/50 dark:hover:bg-gray-900/40 transition-colors text-left cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className={`text-[10px] font-extrabold px-2.5 py-1 rounded-md tracking-wider ${
+                        isPost 
+                          ? "bg-purple-100 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-200/50 dark:border-purple-900/50" 
+                          : "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-900/50"
+                      }`}>
+                        {ep.method}
+                      </span>
+                      <code className="text-xs font-mono font-bold text-gray-900 dark:text-gray-100">{ep.path}</code>
+                      <span className="text-xs text-gray-400 dark:text-gray-505 hidden sm:inline">—</span>
+                      <span className="text-xs font-semibold text-gray-600 dark:text-gray-400 hidden sm:inline">{ep.summary}</span>
+                    </div>
+                    <svg className={`w-4 h-4 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                    </svg>
+                  </button>
+
+                  {isOpen && (
+                    <div className="px-5 py-4 border-t border-gray-150 dark:border-gray-900 bg-white dark:bg-[#0f0e13]/60 space-y-4">
+                      <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed">{ep.description}</p>
+
+                      {ep.parameters.length > 0 && (
+                        <div>
+                          <h5 className="text-[10px] font-bold text-gray-400 dark:text-gray-505 uppercase tracking-wide mb-2">Query Parameters</h5>
+                          <div className="border border-gray-100 dark:border-gray-900 rounded-xl overflow-hidden text-xs">
+                            <table className="w-full border-collapse text-left">
+                              <thead>
+                                <tr className="bg-gray-50 dark:bg-gray-900/50 text-[10px] font-bold uppercase text-gray-400">
+                                  <th className="px-4 py-2">Parameter</th>
+                                  <th className="px-4 py-2">Type</th>
+                                  <th className="px-4 py-2">Description</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-gray-100 dark:divide-gray-900">
+                                {ep.parameters.map((p) => (
+                                  <tr key={p.name}>
+                                    <td className="px-4 py-2 font-mono font-semibold text-purple-600 dark:text-purple-400">
+                                      {p.name} {p.required && <span className="text-red-500">*</span>}
+                                    </td>
+                                    <td className="px-4 py-2 text-gray-500 dark:text-gray-400 font-mono text-[10px]">{p.type}</td>
+                                    <td className="px-4 py-2 text-gray-600 dark:text-gray-300">{p.desc}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      )}
+
+                      {ep.requestBody !== "None" && (
+                        <div>
+                          <h5 className="text-[10px] font-bold text-gray-400 dark:text-gray-505 uppercase tracking-wide mb-2">Request Body (JSON)</h5>
+                          <pre className="p-3 bg-gray-50 dark:bg-gray-950 border border-gray-150 dark:border-gray-900 rounded-xl text-[10px] font-mono text-purple-700 dark:text-purple-300 overflow-x-auto whitespace-pre-wrap">
+                            {ep.requestBody}
+                          </pre>
+                        </div>
+                      )}
+
+                      <div>
+                        <h5 className="text-[10px] font-bold text-gray-400 dark:text-gray-505 uppercase tracking-wide mb-2">Responses</h5>
+                        <div className="space-y-2.5">
+                          {ep.responses.map((r) => (
+                            <div key={r.status} className="text-xs space-y-1.5">
+                              <div className="flex gap-2">
+                                <span className={`font-mono font-bold ${
+                                  r.status.startsWith('2') || r.status.startsWith('3')
+                                    ? 'text-emerald-600 dark:text-emerald-400' 
+                                    : 'text-rose-600 dark:text-rose-400'
+                                }`}>{r.status}</span>
+                                <span className="text-gray-500 dark:text-gray-400">— {r.desc}</span>
+                              </div>
+                              {r.example && (
+                                <pre className="p-2 bg-gray-50 dark:bg-gray-950 border border-gray-150 dark:border-gray-900 rounded-lg text-[9px] font-mono text-gray-600 dark:text-gray-400 overflow-x-auto">
+                                  {r.example}
+                                </pre>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       ),

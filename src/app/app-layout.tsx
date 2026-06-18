@@ -332,7 +332,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <span className="text-[10px] font-bold text-white bg-gradient-to-r from-purple-500 to-pink-500 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
               </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 relative z-10 leading-relaxed whitespace-normal">
-                Upgrade for image uploads, smarter AI, and more Pro Search.
+                Upgrade for unlimited AI queries, full write sync, and automated calendar scheduling.
               </p>
             </Link>
           </div>
