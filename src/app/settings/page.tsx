@@ -4,6 +4,13 @@ import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { z } from "zod";
 import { Mail, Calendar, Check, ShieldCheck, Loader2 } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const CustomKeysSchema = z.object({
   google: z.string().optional(),
@@ -181,19 +188,21 @@ export default function SettingsPage() {
               <label className="block text-xs font-bold text-zinc-550 dark:text-zinc-450 uppercase tracking-wider mb-2">
                 Active AI Agent Model
               </label>
-              <div className="relative">
-                <select
-                  value={selectedModel}
-                  onChange={(e) => handleModelChange(e.target.value)}
-                  className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all font-semibold text-zinc-700 dark:text-zinc-205 cursor-pointer appearance-none"
-                >
-                  <option value="google/gemini-2.5-flash">Gemini 2.5 Flash</option>
-                  <option value="openai/gpt-5.4">GPT-5.4</option>
-                  <option value="openai/gpt-5.2">GPT-5.2</option>
-                  <option value="anthropic/claude-opus-4.7">Claude Opus 4.7</option>
-                  <option value="anthropic/claude-sonnet-4.6">Claude Sonnet 4.6</option>
-                </select>
-              </div>
+              <Select
+                value={selectedModel}
+                onValueChange={handleModelChange}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select an AI model" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="google/gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                  <SelectItem value="openai/gpt-5.4">GPT-5.4</SelectItem>
+                  <SelectItem value="openai/gpt-5.2">GPT-5.2</SelectItem>
+                  <SelectItem value="anthropic/claude-opus-4.7">Claude Opus 4.7</SelectItem>
+                  <SelectItem value="anthropic/claude-sonnet-4.6">Claude Sonnet 4.6</SelectItem>
+                </SelectContent>
+              </Select>
               <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1.5 leading-relaxed font-light">
                 The agent will use this model context to answer your requests. Each provider requires a valid API key configured below.
               </p>
