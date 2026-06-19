@@ -10,6 +10,36 @@ import {
 import { api } from "@/trpc/react";
 import { Mail, RefreshCw, Search as SearchIcon, Send, PenTool, ChevronLeft, Reply } from "lucide-react";
 
+function UserAvatar({ sender, className }: { sender: string | null; className?: string }) {
+  const clean = sender ? sender.replace(/<.*>/, "").trim() : "E";
+  const initial = clean.charAt(0).toUpperCase() || "E";
+
+  let hash = 0;
+  const cleanSender = sender ? sender.replace(/<.*>/, "").trim() : "";
+  for (let i = 0; i < cleanSender.length; i++) {
+    hash = cleanSender.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % 7;
+
+  const colors = [
+    "bg-violet-100 dark:bg-violet-950/40 text-violet-700 dark:text-violet-300 border border-violet-200/50 dark:border-violet-800/30",
+    "bg-indigo-100 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300 border border-indigo-200/50 dark:border-indigo-800/30",
+    "bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/30",
+    "bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200/50 dark:border-amber-800/30",
+    "bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300 border border-rose-200/50 dark:border-rose-800/30",
+    "bg-cyan-100 dark:bg-cyan-950/40 text-cyan-700 dark:text-cyan-300 border border-cyan-200/50 dark:border-cyan-800/30",
+    "bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300 border border-orange-200/50 dark:border-orange-800/30",
+  ];
+
+  const avatarBg = colors[index] || "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200/50 dark:border-zinc-800/50";
+
+  return (
+    <div className={`${className} flex items-center justify-center font-bold shadow-sm ${avatarBg} select-none`}>
+      {initial}
+    </div>
+  );
+}
+
 export function GmailPanel() {
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
@@ -72,15 +102,7 @@ export function GmailPanel() {
     },
   });
 
-  const getInitials = (sender: string | null) => {
-    if (!sender) return "E";
-    const clean = sender.replace(/<.*>/, "").trim();
-    return clean.charAt(0).toUpperCase();
-  };
 
-  const getAvatarBg = (initial: string) => {
-    return "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 border border-zinc-200/50 dark:border-zinc-800/50";
-  };
 
   return (
     <div className="flex flex-col gap-6 w-full min-h-[600px] text-zinc-800 dark:text-zinc-100">
@@ -208,7 +230,6 @@ export function GmailPanel() {
                     </div>
                   ) : (
                     emails.data.map((email) => {
-                      const initial = getInitials(email.from);
                       const isSelected = selectedId === email.id;
                       return (
                         <div
@@ -223,13 +244,10 @@ export function GmailPanel() {
                               : "bg-white dark:bg-zinc-950 border-zinc-100 dark:border-zinc-900 hover:border-zinc-300 dark:hover:border-zinc-800 hover:bg-zinc-50/50 dark:hover:bg-zinc-900/50"
                           }`}
                         >
-                          <div
-                            className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold shadow-sm ${getAvatarBg(
-                              initial
-                            )}`}
-                          >
-                            {initial}
-                          </div>
+                          <UserAvatar
+                            sender={email.from}
+                            className="w-10 h-10 rounded-full"
+                          />
                           <div className="flex-1 min-w-0">
                             <div className="flex justify-between items-baseline gap-2 mb-1">
                               <span className="text-xs font-bold text-zinc-800 dark:text-white truncate">
@@ -426,13 +444,10 @@ export function GmailPanel() {
                   <div className="space-y-6">
                     <div className="bg-zinc-50/50 dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800 rounded-3xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-3">
-                        <div
-                          className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center font-bold shadow-sm ${getAvatarBg(
-                            getInitials(selectedEmail.data.from)
-                          )}`}
-                        >
-                          {getInitials(selectedEmail.data.from)}
-                        </div>
+                        <UserAvatar
+                          sender={selectedEmail.data.from}
+                          className="w-10 h-10 rounded-full"
+                        />
                         <div className="min-w-0">
                           <div className="text-xs font-bold text-zinc-800 dark:text-zinc-200 flex flex-wrap items-center gap-1">
                             <span className="text-zinc-400 dark:text-zinc-500 font-semibold">From:</span>{" "}
