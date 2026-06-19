@@ -113,18 +113,25 @@ export const gmailRouter = createTRPCRouter({
         });
       }
       const cached = await tenant.gmail.db.messages.findByEntityId(input.id);
-
-      if (cached?.data.body || cached?.data.subject) {
-        return {
-          id: cached.entity_id,
-          threadId: cached.data.threadId ?? "",
-          subject: cached.data.subject ?? "",
-          from: cached.data.from ?? "",
-          to: cached.data.to ?? "",
-          body: cached.data.body ?? cached.data.snippet ?? "",
-          snippet: cached.data.snippet ?? "",
-          date: cached.data.internalDate ?? null,
-        };
+      
+      if (cached) {
+        const body =
+          cached.data.body ||
+          extractBodyFromPayload(cached.data.payload as any);
+          
+        if (body) {
+          const headers = cached.data.payload?.headers;
+          return {
+            id: cached.entity_id,
+            threadId: cached.data.threadId ?? "",
+            subject: cached.data.subject ?? getHeader(headers as any, "Subject") ?? "",
+            from: cached.data.from ?? getHeader(headers as any, "From") ?? "",
+            to: cached.data.to ?? getHeader(headers as any, "To") ?? "",
+            body,
+            snippet: cached.data.snippet ?? "",
+            date: cached.data.internalDate ?? null,
+          };
+        }
       }
 
       const message = await tenant.gmail.api.messages.get({

@@ -98,6 +98,16 @@ export async function POST(req: Request) {
           if (typeof args.code === 'string') {
             validateScriptSafety(args.code);
             validateRestrictedOperations(args.code);
+
+            const trimmed = args.code.trim();
+            const arrowRegex = /^(?:\(?\s*async\s*\(\s*\)\s*=>\s*\{([\s\S]*)\}\s*\)?);?$/;
+            const functionRegex = /^(?:\(?\s*async\s*function\s*\(\s*\)\s*\{([\s\S]*)\}\s*\)?);?$/;
+
+            if (arrowRegex.test(trimmed)) {
+              args.code = trimmed.replace(arrowRegex, '$1');
+            } else if (functionRegex.test(trimmed)) {
+              args.code = trimmed.replace(functionRegex, '$1');
+            }
           }
         }
         const finalArgs = { ...args, tenantId };
@@ -155,6 +165,23 @@ ${instructions}
 - Assume UTC+5:30 (Asia/Kolkata) as default unless specified by the user. Always add the proper timezone indicator to any dates/times you generate for calendar events.
 - Use 'run_script' to execute operations.
 - CRITICAL FOR RUN_SCRIPT: If you want to read or fetch data, your script MUST explicitly use the \`return\` keyword at the top level (e.g. \`return await corsair.gmail.api...\`). Otherwise, it will return null!
+- CRITICAL FOR RUN_SCRIPT WRAPPING: DO NOT wrap your script in an outer async function definition (e.g. \`async () => { ... }\` or \`async function() { ... }\`). Write your code directly as flat, top-level statements. Your script is already executed inside an async IIFE wrapper. If you wrap it, it will return the function definition object instead of executing it, resulting in a 'null' or empty output!
+- CRITICAL FOR READING EMAIL BODIES: The Gmail API returns the email body as a base64url encoded string nested inside \`payload.body.data\` or \`payload.parts\`. In your scripts, you MUST decode it using a helper function. Example:
+  \`const decode = (data) => Buffer.from(data, 'base64').toString('utf8');
+  function extractBody(part) {
+    if (part.mimeType === 'text/plain' && part.body?.data) return decode(part.body.data);
+    if (part.parts) {
+      for (const p of part.parts) {
+        const body = extractBody(p);
+        if (body) return body;
+      }
+    }
+    if (part.mimeType === 'text/html' && part.body?.data) return decode(part.body.data);
+    return "";
+  }
+  const msg = await corsair.gmail.api.messages.get({ id: 'MSG_ID', format: 'full' });
+  return extractBody(msg.payload) || decode(msg.payload.body?.data || "") || msg.snippet || "";\`
+  Always write and use this decoding logic when retrieving email contents to read the complete email body instead of just the snippet.
 - To list or fetch calendar events, you MUST use \`events.getMany\` (NOT events.list). Example: \`return await corsair.googlecalendar.api.events.getMany({ calendarId: 'primary', timeMin: new Date().toISOString() })\`
 - For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: Buffer.from(emailContent).toString('base64url') })\`
 - For creating events, Corsair's schema expects the payload in \`event\`. Example: \`corsair.googlecalendar.api.events.create({ calendarId: 'primary', event: { summary: '...', start: { dateTime: '...' }, end: { dateTime: '...' } } })\`

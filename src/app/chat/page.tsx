@@ -127,11 +127,13 @@ export default function ChatPage() {
     localStorage.setItem('corsair_custom_keys', JSON.stringify(newKeys));
   };
   
-  const { messages, setMessages, sendMessage } = useChat({
+  const { messages, setMessages, sendMessage, status } = useChat({
     onError: (error: Error) => {
       setChatError(error.message ?? 'Something went wrong. Please try again.');
     },
   });
+
+  const isLoading = status !== 'ready';
 
   const { data: history, isSuccess, isFetching } = api.chat.getChatHistory.useQuery({ chatId: currentChatId || undefined }, {
     enabled: !!session && !!currentChatId,
@@ -302,7 +304,12 @@ export default function ChatPage() {
                   ? msg.parts.some(p => p.type === 'text' && typeof p.text === 'string' && p.text.trim())
                   : (typeof msg.content === 'string' && msg.content.trim());
                 
-                const isAssistantRunningTools = msg.role === 'assistant' && !hasText;
+                const isLastMessage = index === messages.length - 1;
+                const isAssistantRunningTools = 
+                  isLoading && 
+                  isLastMessage && 
+                  msg.role === 'assistant' && 
+                  !hasText;
 
                 return (
                   <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
