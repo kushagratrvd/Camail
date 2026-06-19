@@ -417,8 +417,23 @@ export function SaaSLanding() {
           >
             Connect Gmail and Calendar
           </button>
-        </div>
+          </div>
       </section>
+
+      {/* Camail Branding Section */}
+      <section className="relative w-full py-24 md:py-32 flex items-center justify-center overflow-hidden bg-[#0a0a0c]">
+      {/* Ambient background glow behind the text */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(120,119,198,0.08),rgba(255,255,255,0))]" />
+      
+      <h2 
+        className="relative text-[13vw] font-black tracking-[-0.03em] md:tracking-[-0.04em] leading-none select-none uppercase font-sans text-transparent bg-clip-text bg-gradient-to-b from-white/[0.05] to-white/[0.01]"
+        style={{
+          WebkitTextStroke: '1px rgba(255, 255, 255, 0.02)',
+        }}
+      >
+        Camail
+      </h2>
+    </section>
 
       {/* Footer */}
       <footer className="h-20 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 bg-[#09080c] text-xs text-zinc-500 mt-auto">
