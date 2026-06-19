@@ -6,8 +6,6 @@ export default function TermsPage() {
   return (
     <div className="flex-1 overflow-y-auto px-4 sm:px-8 py-8 custom-scrollbar bg-white dark:bg-[#0f0e13]">
       <div className="max-w-3xl mx-auto space-y-8 bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 sm:p-10 shadow-sm relative">
-        <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-900 dark:bg-zinc-100"></div>
-
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-100 leading-tight">
             Terms of Service

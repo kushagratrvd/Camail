@@ -96,7 +96,6 @@ export default function SettingsPage() {
           <div className="md:col-span-5 space-y-6">
             {/* Account Profile Card */}
             <div className="bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl p-6 shadow-sm relative overflow-hidden">
-              <div className="absolute top-0 left-0 right-0 h-1 bg-zinc-900 dark:bg-zinc-100"></div>
               <h2 className="text-sm font-bold text-zinc-800 dark:text-zinc-100 uppercase tracking-wider mb-4">
                 User Profile
               </h2>
