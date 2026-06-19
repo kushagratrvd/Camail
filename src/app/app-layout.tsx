@@ -5,6 +5,27 @@ import { signIn, signOut, useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { api } from "@/trpc/react";
+import { 
+  Home, 
+  Inbox, 
+  Calendar, 
+  Activity, 
+  Tag, 
+  Settings, 
+  BookOpen, 
+  Search, 
+  PanelLeft, 
+  Sun, 
+  Moon, 
+  MessageSquare,
+  MoreVertical,
+  Loader2
+} from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: session, isPending } = useSession();
@@ -14,7 +35,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const currentChatId = searchParams.get('chatId');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [openMenuChatId, setOpenMenuChatId] = useState<string | null>(null);
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState<boolean | null>(null);
 
   useEffect(() => {
     const savedTheme = localStorage.getItem("theme");
@@ -45,7 +66,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     onSuccess: () => {
       void utils.chat.getChats.invalidate();
       if (currentChatId) {
-        void router.push('/');
+        void router.push('/chat');
       }
     }
   });
@@ -82,369 +103,360 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [session?.user?.id, utils]);
 
+  useEffect(() => {
+    if (!isPending && !session && pathname !== "/") {
+      void router.replace("/");
+    }
+  }, [session, isPending, pathname, router]);
+
+  const isLandingPage = pathname === "/";
+
+  if (isLandingPage) {
+    return <div className="w-screen min-h-screen bg-[#0f0e13]">{children}</div>;
+  }
+
+  // Guard: don't render theme-dependent UI until client has resolved dark mode or session is validated
+  if (!session || isDarkMode === null) {
+    return (
+      <div className="w-screen h-screen bg-white dark:bg-[#0f0e13] flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-zinc-400 dark:text-zinc-600" />
+      </div>
+    );
+  }
+
   const navItems = [
     {
       name: "Home",
-      href: "/",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-          <polyline points="9 22 9 12 15 12 15 22" />
-        </svg>
-      )
+      href: "/chat",
+      icon: <Home className="w-5 h-5 transition-colors" />
     },
     {
       name: "Inbox",
       href: "/inbox",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="22 12 16 12 14 15 10 15 8 12 2 12" />
-          <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
-        </svg>
-      )
+      icon: <Inbox className="w-5 h-5 transition-colors" />
     },
     {
       name: "Calendar",
       href: "/calendar",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-          <line x1="16" y1="2" x2="16" y2="6" />
-          <line x1="8" y1="2" x2="8" y2="6" />
-          <line x1="3" y1="10" x2="21" y2="10" />
-        </svg>
-      )
+      icon: <Calendar className="w-5 h-5 transition-colors" />
     },
     {
       name: "Activity",
       href: "/activity",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-      )
+      icon: <Activity className="w-5 h-5 transition-colors" />
     },
     {
       name: "Pricing",
       href: "/pricing",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="5" width="20" height="14" rx="2" />
-          <line x1="2" y1="10" x2="22" y2="10" />
-        </svg>
-      )
+      icon: <Tag className="w-5 h-5 transition-colors" />
     },
     {
       name: "Settings",
       href: "/settings",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
-        </svg>
-      )
+      icon: <Settings className="w-5 h-5 transition-colors" />
     },
     {
       name: "Docs",
       href: "/docs",
-      icon: (
-        <svg className="w-5 h-5 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-          <polyline points="14 2 14 8 20 8" />
-          <line x1="16" y1="13" x2="8" y2="13" />
-          <line x1="16" y1="17" x2="8" y2="17" />
-          <polyline points="10 9 9 9 8 9" />
-        </svg>
-      )
+      icon: <BookOpen className="w-5 h-5 transition-colors" />
     }
   ];
 
   return (
-    <div className="w-full h-full max-w-[1440px] bg-white dark:bg-gray-950 rounded-3xl shadow-2xl border border-gray-200/80 dark:border-gray-900 flex overflow-hidden relative transition-colors duration-200">
+    <div className="w-screen h-screen bg-white dark:bg-[#0f0e13] flex overflow-hidden relative transition-colors duration-200">
       {/* Sidebar */}
-      <aside className={`h-full bg-gray-50 dark:bg-[#09080c] border-r border-gray-200 dark:border-gray-900 flex-col pt-6 pb-4 z-10 relative transition-all duration-300 ${
-        isSidebarOpen 
-          ? 'w-[280px] px-4 flex' 
-          : 'w-0 hidden md:w-[80px] md:px-2 md:flex'
-      } overflow-hidden`}>
-        {/* Logo & Theme Toggle */}
-        <div className={`flex items-center justify-between gap-3 px-2 mb-6 whitespace-nowrap ${!isSidebarOpen ? 'justify-center' : ''}`}>
-          <div className="flex items-center gap-3 cursor-pointer">
-            <Link href="/" className="w-10 h-10 flex-shrink-0 flex items-center justify-center">
-              <svg id="Logo" width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg" fill="none">
-                <g id="logomark">
-                  <path fill="#2C4CFD" d="M20 0C17.3922 1.99605e-07 15.1183 1.45568 13.5342 3.63379C13.4379 3.76624 13.3435 3.90193 13.252 4.04004C13.156 4.02057 13.0605 4.00028 12.9648 3.9834C10.312 3.51529 7.67909 4.03688 5.85742 5.8584C4.03613 7.68009 3.5143 10.3131 3.98242 12.9658C3.99931 13.0615 4.02057 13.157 4.04004 13.2529C3.90199 13.3444 3.76618 13.4379 3.63379 13.5342C1.45574 15.1183 0.000113546 17.3923 0 20C0.000113558 22.6077 1.45574 24.8817 3.63379 26.4658C3.76614 26.5621 3.90204 26.6556 4.04004 26.7471C4.0205 26.8433 3.99936 26.9392 3.98242 27.0352C3.51446 29.6879 4.03684 32.321 5.8584 34.1426C7.67994 35.9637 10.3124 36.4855 12.9648 36.0176C13.0606 36.0007 13.1559 35.9794 13.252 35.96C13.3436 36.0981 13.4378 36.2337 13.5342 36.3662C15.1183 38.5443 17.3922 40 20 40C22.6078 40 24.8817 38.5443 26.4658 36.3662C26.5623 36.2335 26.6573 36.0983 26.749 35.96C26.8447 35.9794 26.9398 36.0007 27.0352 36.0176C29.6878 36.4855 32.32 35.963 34.1416 34.1416C35.9629 32.3201 36.4845 29.6877 36.0166 27.0352C35.9997 26.9396 35.9794 26.8439 35.96 26.748C36.0981 26.6565 36.2337 26.5622 36.3662 26.4658C38.5443 24.8817 39.9999 22.6077 40 20C39.9999 17.3923 38.5443 15.1183 36.3662 13.5342C36.2335 13.4376 36.0974 13.3437 35.959 13.252C35.9784 13.1561 35.9987 13.0604 36.0156 12.9648C36.4837 10.3121 35.963 7.67909 34.1416 5.85742C32.3199 4.03599 29.687 3.51526 27.0342 3.9834C26.9391 4.00018 26.8444 4.02071 26.749 4.04004C26.6574 3.90177 26.5622 3.76638 26.4658 3.63379C24.8817 1.45568 22.6078 3.54835e-07 20 0ZM20 32.4355C21.4648 33.7432 23.081 34.7301 24.7168 35.3613C23.4224 37.0556 21.7516 38 20 38C18.2484 38 16.5776 37.0556 15.2832 35.3613C16.919 34.7301 18.5353 33.7432 20 32.4355ZM34.1055 27.7578C34.3801 29.8067 33.8904 31.5645 32.7275 32.7275C31.5646 33.8903 29.8075 34.379 27.7588 34.1045C28.4359 32.5708 28.8593 30.8239 28.9697 28.9688C30.825 28.8582 32.5717 28.4351 34.1055 27.7578ZM5.89551 27.7578C7.42931 28.435 9.1759 28.8583 11.0312 28.9688C11.1417 30.824 11.565 32.5707 12.2422 34.1045C10.1933 34.3792 8.43562 33.8912 7.27246 32.7285C6.10929 31.5653 5.62069 29.8071 5.89551 27.7578ZM26.4824 24.2451C26.7263 25.0959 26.8923 26.0072 26.9619 26.9619C26.3643 26.9183 25.7839 26.8363 25.2246 26.7217C24.9825 27.347 24.6924 27.9675 24.3574 28.5771C25.1934 28.7751 26.0669 28.9076 26.9668 28.9648C26.85 30.6906 26.4234 32.2773 25.7773 33.6221C24.3016 33.1061 22.796 32.2332 21.4141 31.0176C22.0976 30.246 22.6913 29.4321 23.1924 28.5967C23.6048 27.9091 23.9555 27.2068 24.2383 26.5H24.3105C24.2891 26.494 24.2675 26.4885 24.2461 26.4824C24.4704 25.9187 24.6506 25.3516 24.7891 24.7881C25.3524 24.6496 25.9189 24.4695 26.4824 24.2451ZM25.7773 6.37695C26.4236 7.72183 26.8499 9.30905 26.9668 11.0352C25.7353 11.1134 24.553 11.3307 23.4492 11.668C22.7006 11.8967 21.9887 12.1812 21.3223 12.5146C20.8835 12.7345 20.4647 12.9754 20.0684 13.2363C20.2212 16.8693 23.1315 19.7793 26.7646 19.9316C27.0574 19.4873 27.3259 19.015 27.5664 18.5176C28.2604 18.9337 28.9431 19.4287 29.5986 20C29.211 20.3378 28.8117 20.6461 28.4082 20.9297C28.7056 21.5303 28.9656 22.163 29.1836 22.8223C29.8133 22.4057 30.4279 21.9357 31.0176 21.4131C32.2334 22.7949 33.1068 24.3008 33.623 25.7764C32.2783 26.4227 30.6918 26.8489 28.9658 26.9658C28.8995 25.9239 28.733 24.9168 28.4795 23.9629C28.2325 23.0343 27.9015 22.1563 27.498 21.3457C27.2752 20.8982 27.0304 20.4709 26.7646 20.0674C23.1318 20.2197 20.2217 23.1301 20.0684 26.7627C20.5128 27.0555 20.9848 27.3248 21.4824 27.5654C21.0662 28.2597 20.5715 28.9429 20 29.5986C19.662 29.2108 19.354 28.8109 19.0703 28.4072C18.4696 28.7047 17.8371 28.9645 17.1777 29.1826C17.5945 29.8125 18.0641 30.4276 18.5869 31.0176C17.2051 32.2333 15.6991 33.1057 14.2236 33.6221C13.5775 32.2773 13.151 30.6908 13.0342 28.9648C14.2795 28.8856 15.4745 28.6642 16.5889 28.3203C17.3076 28.0986 17.9921 27.8254 18.6348 27.5068C19.0896 27.2812 19.5231 27.0324 19.9326 26.7627C19.7793 23.1308 16.8692 20.2207 13.2373 20.0674C12.9443 20.512 12.6753 20.9846 12.4346 21.4824C11.74 21.0662 11.0564 20.5717 10.4004 20C10.7887 19.6616 11.1885 19.3525 11.5928 19.0684C11.2955 18.4679 11.0353 17.8358 10.8174 17.1768C10.1874 17.5933 9.57241 18.0632 8.98242 18.5859C7.76712 17.2043 6.8941 15.699 6.37793 14.2236C7.72278 13.5774 9.30916 13.15 11.0352 13.0332C11.1134 14.2649 11.3305 15.4478 11.668 16.5518C11.8894 17.2765 12.1646 17.9663 12.4844 18.6143C12.7125 19.0762 12.9639 19.5162 13.2373 19.9316C16.8695 19.7783 19.7798 16.8687 19.9326 13.2363C19.488 12.9433 19.0155 12.6743 18.5176 12.4336C18.9337 11.7393 19.4285 11.0562 20 10.4004C20.3383 10.7885 20.6476 11.1879 20.9316 11.5918C21.5321 11.2946 22.1642 11.0343 22.8232 10.8164C22.4065 10.1863 21.936 9.57147 21.4131 8.98145C22.7952 7.76576 24.3015 6.89304 25.7773 6.37695ZM8.98145 21.4131C9.73265 22.0788 10.5236 22.6596 11.3359 23.1523C12.045 23.5826 12.77 23.9462 13.5 24.2383V24.3105C13.5059 24.2895 13.5116 24.2681 13.5176 24.2471C14.081 24.4713 14.6477 24.6506 15.2109 24.7891C15.3494 25.3523 15.5297 25.919 15.7539 26.4824C14.9036 26.7261 13.9932 26.8923 13.0391 26.9619C13.0827 26.364 13.1648 25.7832 13.2793 25.2236C12.6536 24.9814 12.0328 24.6917 11.4229 24.3564C11.2249 25.1924 11.0924 26.066 11.0352 26.9658C9.30948 26.849 7.72359 26.4224 6.37891 25.7764C6.89503 24.301 7.7661 22.7947 8.98145 21.4131ZM35.3613 15.2822C37.0558 16.5766 37.9999 18.2483 38 20C37.9999 21.7512 37.056 23.4225 35.3623 24.7168C34.731 23.0808 33.7435 21.464 32.4355 19.999C33.7431 18.5342 34.7303 16.918 35.3613 15.2822ZM4.63867 15.2832C5.26975 16.9189 6.25603 18.5353 7.56348 20C6.25593 21.4647 5.26888 23.0811 4.6377 24.7168C2.94403 23.4225 2.00011 21.7512 2 20C2.00011 18.2485 2.94453 16.5776 4.63867 15.2832ZM28.9658 13.0332C30.6914 13.1501 32.2775 13.5776 33.6221 14.2236C33.1057 15.6988 32.2329 17.2044 31.0176 18.5859C30.2719 17.9252 29.4876 17.3469 28.6816 16.8564C27.9673 16.4218 27.2357 16.056 26.5 15.7617V15.6895C26.494 15.7108 26.4885 15.7326 26.4824 15.7539C25.9193 15.5298 25.353 15.3494 24.79 15.2109C24.6516 14.6476 24.4704 14.0811 24.2461 13.5176C25.0967 13.2738 26.0075 13.1077 26.9619 13.0381C26.9183 13.6356 26.8372 14.2162 26.7227 14.7754C27.3484 15.0177 27.9691 15.3082 28.5791 15.6436C28.7771 14.8074 28.9086 13.9332 28.9658 13.0332ZM14.2236 6.37793C15.6987 6.89421 17.2045 7.76625 18.5859 8.98145C17.9251 9.7272 17.3478 10.5122 16.8574 11.3184C16.4227 12.0328 16.0561 12.7642 15.7617 13.5H15.6924C15.7125 13.5057 15.7329 13.5109 15.7529 13.5166C15.5285 14.0803 15.3485 14.6474 15.21 15.2109C14.6472 15.3493 14.0815 15.5299 13.5186 15.7539C13.2748 14.9033 13.1087 13.9925 13.0391 13.0381C13.6369 13.0817 14.2178 13.1618 14.7773 13.2764C15.0196 12.651 15.3094 12.0305 15.6445 11.4209C14.8083 11.2231 13.9342 11.0924 13.0342 11.0352C13.1511 9.30925 13.5775 7.72271 14.2236 6.37793ZM27.7578 5.89453C29.8069 5.6199 31.5645 6.10941 32.7275 7.27246C33.8902 8.43544 34.3799 10.1926 34.1055 12.2412C32.5718 11.564 30.8249 11.1418 28.9697 11.0312C28.8592 9.17566 28.4352 7.42847 27.7578 5.89453ZM7.27148 7.27246C8.43485 6.10924 10.1935 5.61945 12.2432 5.89453C11.5657 7.42854 11.1418 9.17554 11.0312 11.0312C9.17609 11.1417 7.4292 11.5641 5.89551 12.2412C5.62111 10.1927 6.10893 8.43539 7.27148 7.27246ZM20 2C21.7513 2 23.4224 2.94396 24.7168 4.6377C23.081 5.26874 21.4649 6.25592 20 7.56348C18.5354 6.25608 16.9188 5.26976 15.2832 4.63867C16.5776 2.94455 18.2485 2 20 2Z" clip-rule="evenodd" fill-rule="evenodd" />
-                </g>
-              </svg>
-            </Link>
-            {isSidebarOpen && (
-              <Link href="/" className="font-bold text-lg text-gray-800 dark:text-gray-100 tracking-tight">
-                Camail
+      {session && (
+        <aside className={`h-full bg-zinc-50/70 dark:bg-[#09080c]/60 backdrop-blur-md border-r border-zinc-200/80 dark:border-zinc-800/80 flex-col pt-6 pb-4 z-10 relative transition-all duration-300 ${
+          isSidebarOpen 
+            ? 'w-[280px] px-4 flex' 
+            : 'w-0 hidden md:w-[80px] md:px-2 md:flex'
+        } overflow-hidden`}>
+          {/* Logo & Theme Toggle */}
+          <div className={`flex items-center justify-between gap-3 px-2 mb-6 whitespace-nowrap ${!isSidebarOpen ? 'justify-center' : ''}`}>
+            <div className="flex items-center gap-3 cursor-pointer">
+              <Link href="/chat" className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center font-bold text-white dark:text-zinc-900 text-sm">
+                C
               </Link>
+              {isSidebarOpen && (
+                <Link href="/chat" className="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight">
+                  Camail
+                </Link>
+              )}
+            </div>
+            
+            {isSidebarOpen && (
+              <button
+                onClick={toggleDarkMode}
+                className="relative w-12 h-6 bg-zinc-200 dark:bg-zinc-850 rounded-full p-1 transition-colors duration-300 flex items-center cursor-pointer border border-zinc-250 dark:border-zinc-800"
+                title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+              >
+                <div
+                  className={`w-4 h-4 bg-white dark:bg-zinc-950 rounded-full shadow-sm flex items-center justify-center transition-all duration-300 transform ${
+                    isDarkMode ? "translate-x-6" : "translate-x-0"
+                  }`}
+                >
+                  {isDarkMode ? (
+                    <Sun className="w-3 h-3 text-zinc-400" />
+                  ) : (
+                    <Moon className="w-3 h-3 text-zinc-600" />
+                  )}
+                </div>
+              </button>
             )}
           </div>
           
+          {/* Search Box */}
           {isSidebarOpen && (
-            <button
-              onClick={toggleDarkMode}
-              className="relative w-14 h-7 bg-gray-200 dark:bg-gray-800 rounded-full p-1 transition-colors duration-300 flex items-center cursor-pointer shadow-inner"
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <div
-                className={`w-5 h-5 bg-white dark:bg-gray-950 rounded-full shadow-md flex items-center justify-center transition-all duration-300 transform ${
-                  isDarkMode ? "translate-x-7" : "translate-x-0"
-                }`}
-              >
-                {isDarkMode ? (
-                  <svg className="w-3.5 h-3.5 text-amber-500 fill-amber-500/20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                  </svg>
-                ) : (
-                  <svg className="w-3.5 h-3.5 text-indigo-600 fill-indigo-100/30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                  </svg>
-                )}
+            <div className="px-2 mb-6 whitespace-nowrap">
+              <div className="relative flex items-center w-full h-10 rounded-full bg-white/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 focus-within:border-zinc-400 dark:focus-within:border-zinc-650 transition-all">
+                <Search className="w-4 h-4 text-zinc-400 absolute left-3.5" />
+                <input className="w-full h-full bg-transparent border-none focus:ring-0 text-sm pl-10 pr-4 text-zinc-800 dark:text-zinc-100 placeholder-zinc-400 rounded-full outline-none" placeholder="Search chat" type="text"/>
               </div>
-              <span className={`absolute right-2 text-[8px] transition-opacity duration-300 ${isDarkMode ? "opacity-0" : "opacity-100"}`}>
-                🌙
-              </span>
-              <span className={`absolute left-2 text-[8px] transition-opacity duration-300 ${isDarkMode ? "opacity-100" : "opacity-0"}`}>
-                ☀️
-              </span>
-            </button>
-          )}
-        </div>
-        
-        {/* Search Box */}
-        {isSidebarOpen && (
-          <div className="px-2 mb-6 whitespace-nowrap">
-            <div className="relative flex items-center w-full h-10 rounded-xl bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 focus-within:ring-2 focus-within:ring-purple-200 focus-within:border-purple-300 transition-all">
-              <svg className="w-4 h-4 text-gray-400 absolute left-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"></path>
-              </svg>
-              <input className="w-full h-full bg-transparent border-none focus:ring-0 text-sm pl-9 pr-3 text-gray-800 dark:text-gray-100 placeholder-gray-400 rounded-xl outline-none" placeholder="Search chat" type="text"/>
             </div>
-          </div>
-        )}
-        
-        {/* Main Navigation */}
-        <nav className={`flex-1 overflow-y-auto custom-scrollbar px-2 space-y-8 ${isSidebarOpen ? 'min-w-[240px]' : 'w-full'}`}>
-          <ul className="space-y-1">
-            {navItems.map((item) => {
-              const isActive = pathname === item.href && (!currentChatId || item.name !== 'Home');
-              return (
-                <li key={item.name}>
+          )}
+          
+          {/* Main Navigation */}
+          <nav className={`flex-1 overflow-y-auto custom-scrollbar px-2 space-y-8 ${isSidebarOpen ? 'min-w-[240px]' : 'w-full'}`}>
+            <ul className="space-y-1">
+              {navItems.map((item) => {
+                const isActive = pathname === item.href && (!currentChatId || item.name !== 'Home');
+                
+                const linkEl = (
                   <Link 
                     href={item.href} 
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all font-medium text-sm group ${
+                    className={`flex items-center gap-3 px-4 py-2.5 rounded-full transition-all font-medium text-sm group ${
                       isActive 
-                        ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900/50 shadow-sm" 
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white"
+                        ? "bg-zinc-200/60 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 shadow-sm" 
+                        : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/30 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
                     } ${!isSidebarOpen ? "justify-center" : ""}`}
-                    title={!isSidebarOpen ? item.name : undefined}
                   >
-                    <span className={isActive ? "text-purple-600 dark:text-purple-400" : "text-gray-400 dark:text-gray-500 group-hover:text-purple-500"}>
+                    <span className={isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-200"}>
                       {item.icon}
                     </span>
                     {isSidebarOpen && (
-                      <span className={isActive ? "text-purple-700 dark:text-purple-300" : "text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white transition-colors"}>
+                      <span className={isActive ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white transition-colors"}>
                         {item.name}
                       </span>
                     )}
                   </Link>
-                </li>
-              );
-            })}
-          </ul>
+                );
 
-          {/* Chat History Section */}
-          <div className="pt-2">
-            {isSidebarOpen ? (
-              <div className="flex items-center justify-between px-3 mb-2">
-                <h3 className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wider">Recent Chats</h3>
-                <button 
-                  onClick={() => router.push('/')}
-                  className="text-gray-400 dark:text-gray-500 hover:text-purple-500 transition-colors"
-                  title="New Chat"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
-                  </svg>
-                </button>
-              </div>
-            ) : (
-              <div className="h-px bg-gray-200 dark:bg-gray-900 my-4" />
-            )}
-            <ul className="space-y-1">
-              {(chats as { id: string; title: string }[])?.map((chat) => (
-                <li key={chat.id} className="relative group/item flex items-center w-full">
-                  <Link 
-                    href={`/?chatId=${chat.id}`}
-                    className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-all font-medium text-sm group flex-1 min-w-0 ${
-                      currentChatId === chat.id
-                        ? "bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-300 border border-purple-100 dark:border-purple-900/50 shadow-sm" 
-                        : "text-gray-600 dark:text-gray-400 hover:bg-gray-200/50 dark:hover:bg-gray-900 hover:text-gray-900 dark:hover:text-white"
-                    } ${!isSidebarOpen ? "justify-center" : ""}`}
-                    title={!isSidebarOpen ? chat.title : undefined}
-                  >
-                    <span className={currentChatId === chat.id ? "text-purple-600 dark:text-purple-400" : "text-gray-400 dark:text-gray-500 group-hover:text-purple-500"}>
-                      <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
-                      </svg>
-                    </span>
-                    {isSidebarOpen && (
-                      <span className={`truncate flex-1 pr-6 transition-colors ${
-                        currentChatId === chat.id 
-                          ? "text-purple-700 dark:text-purple-300" 
-                          : "text-gray-600 dark:text-gray-400 group-hover:text-gray-900 dark:group-hover:text-white"
-                      }`}>
-                        {chat.title}
-                      </span>
+                return (
+                  <li key={item.name}>
+                    {!isSidebarOpen ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+                        <TooltipContent side="right">
+                          <p>{item.name}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      linkEl
                     )}
-                  </Link>
-                  
-                  {isSidebarOpen && (
-                    <div className="absolute right-2 opacity-0 group-hover/item:opacity-100 transition-opacity z-20">
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setOpenMenuChatId(openMenuChatId === chat.id ? null : chat.id);
-                        }}
-                        className="p-1 text-gray-400 dark:text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-800 rounded-md transition-colors cursor-pointer"
-                        title="Chat Actions"
+                  </li>
+                );
+              })}
+            </ul>
+
+            {/* Chat History Section */}
+            <div className="pt-2">
+              {isSidebarOpen ? (
+                <div className="flex items-center justify-between px-3 mb-2">
+                  <h3 className="text-xs font-semibold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider">Recent Chats</h3>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button 
+                        onClick={() => router.push('/chat')}
+                        className="text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 transition-colors"
                       >
-                        <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M12 8a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4zm0 6a2 2 0 110-4 2 2 0 010 4z" />
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path>
                         </svg>
                       </button>
-                      
-                      {openMenuChatId === chat.id && (
-                        <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 shadow-lg rounded-xl py-1 z-30">
-                          <button
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              deleteChatMutation.mutate({ chatId: chat.id });
-                              setOpenMenuChatId(null);
-                            }}
-                            className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
-                          >
-                            Delete Chat
-                          </button>
-                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p>New Chat</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+              ) : (
+                <div className="h-px bg-zinc-200 dark:bg-zinc-800 my-4" />
+              )}
+              <ul className="space-y-1">
+                {(chats as { id: string; title: string }[])?.map((chat) => (
+                  <li key={chat.id} className="relative group/item flex items-center w-full">
+                    <Link 
+                      href={`/chat?chatId=${chat.id}`}
+                      className={`flex items-center gap-3 px-4 py-2 rounded-full transition-all font-medium text-sm group flex-1 min-w-0 ${
+                        currentChatId === chat.id
+                          ? "bg-zinc-200/60 dark:bg-zinc-800/80 text-zinc-900 dark:text-zinc-100 border border-zinc-300 dark:border-zinc-700 shadow-sm" 
+                          : "text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/30 dark:hover:bg-zinc-900 hover:text-zinc-900 dark:hover:text-white"
+                      } ${!isSidebarOpen ? "justify-center" : ""}`}
+                      title={!isSidebarOpen ? chat.title : undefined}
+                    >
+                      <span className={currentChatId === chat.id ? "text-zinc-900 dark:text-zinc-100" : "text-zinc-400 dark:text-zinc-500 group-hover:text-zinc-800 dark:group-hover:text-zinc-200"}>
+                        <MessageSquare className="w-4 h-4 flex-shrink-0" />
+                      </span>
+                      {isSidebarOpen && (
+                        <span className={`truncate flex-1 pr-6 transition-colors ${
+                          currentChatId === chat.id 
+                            ? "text-zinc-900 dark:text-zinc-100" 
+                            : "text-zinc-600 dark:text-zinc-400 group-hover:text-zinc-900 dark:group-hover:text-white"
+                        }`}>
+                          {chat.title}
+                        </span>
+                      )}
+                    </Link>
+                    
+                    {isSidebarOpen && (
+                      <div className="absolute right-2 opacity-0 group-hover/item:opacity-100 transition-opacity z-20">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setOpenMenuChatId(openMenuChatId === chat.id ? null : chat.id);
+                          }}
+                          className="p-1 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-850 rounded-md transition-colors cursor-pointer"
+                          title="Chat Actions"
+                        >
+                          <MoreVertical className="w-3.5 h-3.5" />
+                        </button>
+                        
+                        {openMenuChatId === chat.id && (
+                          <div className="absolute right-0 mt-1 w-32 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-lg rounded-xl py-1 z-30">
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                deleteChatMutation.mutate({ chatId: chat.id });
+                                setOpenMenuChatId(null);
+                              }}
+                              className="w-full text-left px-3 py-1.5 text-xs font-semibold text-red-600 dark:text-red-405 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+                            >
+                              Delete Chat
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </li>
+                ))}
+                {chats?.length === 0 && isSidebarOpen && (
+                  <div className="px-3 py-2 text-xs text-zinc-450 italic">No recent chats</div>
+                )}
+              </ul>
+            </div>
+          </nav>
+          
+          {/* Upgrade Card or Slim Theme Toggle */}
+          {isSidebarOpen ? (
+            <div className="mt-auto pt-4 px-2 whitespace-nowrap min-w-[240px]">
+              <Link href="/pricing" className="block bg-zinc-100/30 dark:bg-zinc-900/30 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer">
+                <div className="flex items-center gap-2 mb-2 relative z-10">
+                  <span className="text-sm font-bold text-zinc-800 dark:text-zinc-100">Upgrade to</span>
+                  <span className="text-[10px] font-bold text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 relative z-10 leading-relaxed whitespace-normal font-light">
+                  Upgrade for unlimited AI queries, full write sync, and automated calendar scheduling.
+                </p>
+              </Link>
+            </div>
+          ) : (
+            <div className="mt-auto pt-4 flex justify-center w-full">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={toggleDarkMode}
+                    className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-900 flex items-center justify-center transition-all shadow-sm cursor-pointer relative overflow-hidden group"
+                  >
+                    <div className="relative w-5 h-5 flex items-center justify-center transition-transform duration-500 transform group-hover:scale-110">
+                      {isDarkMode ? (
+                        <Sun className="w-5 h-5 text-zinc-400" />
+                      ) : (
+                        <Moon className="w-5 h-5 text-zinc-600" />
                       )}
                     </div>
-                  )}
-                </li>
-              ))}
-              {chats?.length === 0 && isSidebarOpen && (
-                <div className="px-3 py-2 text-xs text-gray-400 italic">No recent chats</div>
-              )}
-            </ul>
-          </div>
-        </nav>
-        
-        {/* Upgrade Card or Slim Theme Toggle */}
-        {isSidebarOpen ? (
-          <div className="mt-auto pt-4 px-2 whitespace-nowrap min-w-[240px]">
-            <Link href="/pricing" className="block bg-gradient-to-br from-[#fdfbfb] to-[#ebedee] dark:from-gray-900 dark:to-gray-950 border border-gray-200 dark:border-gray-800 rounded-2xl p-4 shadow-sm relative overflow-hidden group hover:shadow-md transition-all cursor-pointer">
-              <div className="flex items-center gap-2 mb-2 relative z-10">
-                <span className="text-sm font-bold text-gray-800 dark:text-gray-100">Upgrade to</span>
-                <span className="text-[10px] font-bold text-white bg-purple-600 dark:bg-purple-700 px-2 py-0.5 rounded-full uppercase tracking-wider">Pro</span>
-              </div>
-              <p className="text-xs text-gray-500 dark:text-gray-400 relative z-10 leading-relaxed whitespace-normal">
-                Upgrade for unlimited AI queries, full write sync, and automated calendar scheduling.
-              </p>
-            </Link>
-          </div>
-        ) : (
-          <div className="mt-auto pt-4 flex justify-center w-full">
-            <button
-              onClick={toggleDarkMode}
-              className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-500 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-900 flex items-center justify-center transition-all shadow-sm cursor-pointer relative overflow-hidden group"
-              title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-            >
-              <div className="relative w-5 h-5 flex items-center justify-center transition-transform duration-500 transform group-hover:scale-110">
-                {isDarkMode ? (
-                  <svg className="w-5 h-5 text-amber-500 fill-amber-450/20 transition-all rotate-45" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="4" />
-                    <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5 text-indigo-600 fill-indigo-100/30 transition-all" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
-                  </svg>
-                )}
-              </div>
-            </button>
-          </div>
-        )}
-      </aside>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}</p>
+                </TooltipContent>
+              </Tooltip>
+            </div>
+          )}
+        </aside>
+      )}
 
       {/* Main Content Pane */}
-      <main className="flex-1 flex flex-col h-full relative z-0 overflow-hidden bg-white dark:bg-[#0f0e13]">
+      <main className="flex-1 flex flex-col min-h-0 relative z-0 overflow-hidden bg-white dark:bg-[#0f0e13]">
         {/* Top Bar Header */}
-        <header className="h-20 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 relative z-20 border-b border-gray-100 dark:border-gray-900 bg-white dark:bg-[#0f0e13]">
-          <div className="flex items-center gap-3">
-            {/* Sidebar Toggle Button */}
-            <button 
-              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-              className="w-10 h-10 rounded-xl border border-gray-200 dark:border-gray-800 text-gray-500 hover:text-gray-800 dark:text-gray-100 dark:hover:bg-gray-900 hover:bg-gray-50 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
-              title="Toggle Sidebar"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {isSidebarOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 19l-7-7 7-7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
-                )}
-              </svg>
-            </button>
-            <button className="font-bold text-xl tracking-tight text-gray-800 dark:text-gray-100 md:hidden">
-              Camail
-            </button>
-          </div>
-          
-          <div className="flex items-center gap-4">
-            {isPending ? (
-              <span className="text-sm text-gray-400">Loading...</span>
-            ) : session ? (
-              <div className="flex items-center gap-3">
-                <button 
-                  onClick={() => signOut()} 
-                  className="text-xs font-semibold text-gray-500 hover:text-gray-800 dark:hover:text-gray-200 transition-colors cursor-pointer"
-                >
-                  Sign Out
-                </button>
-                <div className="flex items-center gap-3">
-                  <div className="text-right hidden sm:block">
-                    <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">{session.user.name}</div>
-                    <div className="text-xs text-gray-400 dark:text-gray-500">{session.user.email}</div>
+        {session && (
+          <header className="h-15 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 relative z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0f0e13]">
+            <div className="flex items-center gap-3">
+              {/* Sidebar Toggle Button */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button 
+                    onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+                    className="w-10 h-10 rounded-full border border-zinc-200 dark:border-zinc-800 text-zinc-500 hover:text-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-900 hover:bg-zinc-50 flex items-center justify-center transition-colors shadow-sm cursor-pointer"
+                  >
+                    <PanelLeft className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>{isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}</p>
+                </TooltipContent>
+              </Tooltip>
+              <button className="font-bold text-xl tracking-tight text-zinc-800 dark:text-zinc-100 md:hidden">
+                Camail
+              </button>
+            </div>
+            
+            <div className="flex items-center gap-4">
+              {isPending ? (
+                <span className="text-sm text-zinc-450">Loading...</span>
+              ) : session ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-left hidden sm:block">
+                    <div className="text-sm font-bold text-zinc-900 dark:text-zinc-100 leading-tight">
+                      {session.user.name}
+                    </div>
+                    <div className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-0.5 leading-none">
+                      {session.user.email}
+                    </div>
                   </div>
                   {session.user.image ? (
-                    <img alt="User Avatar" className="w-10 h-10 rounded-full border border-gray-100 dark:border-gray-900 shadow-sm object-cover" src={session.user.image} />
+                    <img 
+                      alt="User Avatar" 
+                      className="w-10 h-10 rounded-full border border-zinc-250 dark:border-zinc-800/80 shadow-sm object-cover" 
+                      src={session.user.image} 
+                    />
                   ) : (
-                    <div className="w-10 h-10 rounded-full border border-gray-100 dark:border-gray-900 shadow-sm bg-gray-200 dark:bg-gray-800 flex items-center justify-center font-bold text-gray-500">
-                      {session.user.name?.charAt(0) || 'U'}
+                    <div className="w-10 h-10 rounded-full border border-zinc-250 dark:border-zinc-800/80 shadow-sm bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-zinc-600 dark:text-zinc-300 text-sm">
+                      {session.user.name?.charAt(0).toUpperCase() || 'U'}
                     </div>
                   )}
+                  <button 
+                    onClick={() => signOut()} 
+                    className="border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 text-zinc-900 dark:text-zinc-100 rounded-full px-5 py-2 text-sm font-semibold transition-colors cursor-pointer"
+                  >
+                    Sign Out
+                  </button>
                 </div>
-              </div>
-            ) : (
-              <button 
-                onClick={() => signIn.social({ provider: "google" })}
-                className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 text-sm font-medium px-4 py-2 rounded-full hover:bg-gray-800 dark:hover:bg-gray-200 shadow-sm transition-all cursor-pointer"
-              >
-                Sign In with Google
-              </button>
-            )}
-          </div>
-        </header>
+              ) : (
+                <button 
+                  onClick={() => signIn.social({ provider: "google" })}
+                  className="bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 text-sm font-medium px-4 py-2 rounded-full hover:bg-zinc-800 dark:hover:bg-zinc-200 shadow-sm transition-all cursor-pointer"
+                >
+                  Sign In with Google
+                </button>
+              )}
+            </div>
+          </header>
+        )}
 
         {/* Page children viewport */}
-        <div className="flex-1 relative overflow-hidden flex flex-col bg-white dark:bg-[#0f0e13]">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-[#0f0e13]">
           {children}
         </div>
       </main>
