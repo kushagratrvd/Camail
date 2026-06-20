@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { signIn, signOut, useSession } from "@/lib/auth-client";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ReactLenis } from "lenis/react";
 import { api } from "@/trpc/react";
 import { 
   Home, 
@@ -103,20 +104,25 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [session?.user?.id, utils]);
 
+  const isLandingPage = pathname === "/";
+  const isPublicPage = isLandingPage || pathname === "/privacy" || pathname === "/terms" || pathname.startsWith("/docs");
+
   useEffect(() => {
-    if (!isPending && !session && pathname !== "/") {
+    if (!isPending && !session && !isPublicPage) {
       void router.replace("/");
     }
-  }, [session, isPending, pathname, router]);
-
-  const isLandingPage = pathname === "/";
+  }, [session, isPending, pathname, router, isPublicPage]);
 
   if (isLandingPage) {
-    return <div className="w-full min-h-screen bg-[#0f0e13]">{children}</div>;
+    return (
+      <ReactLenis root>
+        <div className="w-full min-h-screen bg-[#0f0e13]">{children}</div>
+      </ReactLenis>
+    );
   }
 
   // Guard: don't render theme-dependent UI until client has resolved dark mode or session is validated
-  if (!session || isDarkMode === null) {
+  if (isDarkMode === null || (!session && !isPublicPage)) {
     return (
       <div className="w-screen h-screen bg-white dark:bg-[#0f0e13] flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-zinc-400 dark:text-zinc-600" />
