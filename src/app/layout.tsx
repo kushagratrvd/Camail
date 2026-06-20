@@ -4,6 +4,7 @@ import { TRPCReactProvider } from "@/trpc/react";
 import { Geist } from "next/font/google";
 import AppLayout from "./app-layout";
 import { Suspense } from "react";
+import { ReactLenis } from "lenis/react";
 
 const geistSans = Geist({
   subsets: ["latin"],
@@ -28,7 +29,9 @@ export default function RootLayout({
         <TRPCReactProvider>
           <TooltipProvider>
             <Suspense fallback={null}>
-              <AppLayout>{children}</AppLayout>
+              <ReactLenis root>
+                <AppLayout>{children}</AppLayout>
+              </ReactLenis>
             </Suspense>
           </TooltipProvider>
         </TRPCReactProvider>

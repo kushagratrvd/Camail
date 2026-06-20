@@ -51,7 +51,7 @@ export function SaaSLanding() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#0f0e13] text-zinc-100 flex flex-col font-sans select-none overflow-x-hidden overflow-y-auto scroll-smooth">
+    <div className="min-h-screen bg-[#0f0e13] text-zinc-100 flex flex-col font-sans select-none overflow-x-hidden scroll-smooth">
       {/* Landing Header */}
       <header className="landing-header sticky top-0 z-50 w-full border-b border-white/10 bg-[#0f0e13]/85 backdrop-blur-md">
    <div className="nav-bar h-15 mx-auto max-w-7xl px-6 sm:px-12 flex items-center justify-between">
