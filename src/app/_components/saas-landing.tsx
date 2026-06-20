@@ -307,7 +307,7 @@ export function SaaSLanding() {
 
               <ul className="space-y-4 mb-8 flex-1">
                 {[
-                  "100 AI queries per month",
+                  "50 AI queries per month",
                   "Summarize last 3 unread emails",
                   "View upcoming schedule",
                   "Standard support responses",

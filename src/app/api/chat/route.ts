@@ -5,7 +5,7 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
-import { validateScriptSafety, validatePromptSafety, validateRestrictedOperations } from '@/server/lib/quota';
+import { validateScriptSafety, validatePromptSafety, validateRestrictedOperations, enforceAiQuota } from '@/server/lib/quota';
 import { z } from 'zod';
 import { auth } from '@/server/auth';
 import { headers } from 'next/headers';
@@ -72,6 +72,12 @@ export async function POST(req: Request) {
   const tenantId = await getTenantId();
   if (!tenantId) {
     return new Response('Unauthorized', { status: 401 });
+  }
+
+  const [provider] = model.split('/');
+  const hasCustomKey = keys && !!keys[provider as keyof typeof keys];
+  if (!hasCustomKey) {
+    await enforceAiQuota(tenantId);
   }
 
   const syncedCorsair = await getTenant();
@@ -200,20 +206,24 @@ ${instructions}
     const lastError = e?.lastError as Record<string, unknown> | undefined;
 
     const isSafetyError = errorMessage.includes('Safety Violation');
-    const isQuotaError = e?.statusCode === 429
+    const isQuotaViolation = errorMessage.includes('Quota Violation');
+    const isQuotaError = isQuotaViolation
+      || e?.statusCode === 429
       || lastError?.statusCode === 429
       || errorMessage.includes('quota')
       || errorMessage.includes('RESOURCE_EXHAUSTED');
 
     const message = isSafetyError
       ? `⚠️ ${errorMessage}`
-      : isQuotaError
-        ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
-        : '❌ Something went wrong. Please try again.';
+      : isQuotaViolation
+        ? `⚠️ ${errorMessage}`
+        : isQuotaError
+          ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
+          : '❌ Something went wrong. Please try again.';
 
     return new Response(
       message,
-      { status: isSafetyError ? 400 : (isQuotaError ? 429 : 500), headers: { 'Content-Type': 'text/plain' } }
+      { status: isSafetyError || isQuotaViolation ? 400 : (isQuotaError ? 429 : 500), headers: { 'Content-Type': 'text/plain' } }
     );
   }
 }

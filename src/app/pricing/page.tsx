@@ -22,7 +22,7 @@ export default function PricingPage() {
       price: "0",
       description: "Essential tools for basic email summaries and scheduling.",
       features: [
-        "100 AI queries per month",
+        "50 AI queries per month",
         "Summarize last 3 unread emails",
         "View upcoming schedule",
         "Standard support responses",

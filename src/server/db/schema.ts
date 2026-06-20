@@ -63,5 +63,7 @@ export const corsairSyncQuotas = pgTable('corsair_sync_quotas', {
     tenantId: text('tenant_id').primaryKey(),
     count: integer('count').notNull().default(0),
     lastReset: text('last_reset').notNull(), // YYYY-MM-DD
+    aiCount: integer('ai_count').notNull().default(0),
+    aiLastReset: text('ai_last_reset').notNull().default(''), // YYYY-MM
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

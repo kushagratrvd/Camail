@@ -60,6 +60,60 @@ export async function enforceSyncQuota(tenantId: string) {
   return quota;
 }
 
+const MONTHLY_AI_LIMIT = 50;
+
+export async function checkAndIncrementAiQuota(tenantId: string): Promise<{ allowed: boolean; remaining: number; limit: number }> {
+  const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM
+
+  const record = await db
+    .select()
+    .from(corsairSyncQuotas)
+    .where(eq(corsairSyncQuotas.tenantId, tenantId))
+    .execute()
+    .then((res) => res[0]);
+
+  let currentCount = 0;
+  if (record && record.aiLastReset === currentMonth) {
+    currentCount = record.aiCount;
+  }
+
+  if (currentCount >= MONTHLY_AI_LIMIT) {
+    return { allowed: false, remaining: 0, limit: MONTHLY_AI_LIMIT };
+  }
+
+  const newCount = currentCount + 1;
+
+  await db
+    .insert(corsairSyncQuotas)
+    .values({
+      tenantId,
+      aiCount: newCount,
+      aiLastReset: currentMonth,
+      count: 0,
+      lastReset: "",
+    })
+    .onConflictDoUpdate({
+      target: corsairSyncQuotas.tenantId,
+      set: {
+        aiCount: newCount,
+        aiLastReset: currentMonth,
+      },
+    })
+    .execute();
+
+  return { allowed: true, remaining: MONTHLY_AI_LIMIT - newCount, limit: MONTHLY_AI_LIMIT };
+}
+
+export async function enforceAiQuota(tenantId: string) {
+  const quota = await checkAndIncrementAiQuota(tenantId);
+  if (!quota.allowed) {
+    throw new Error(
+      `Quota Violation: You have reached the free tier limit of ${quota.limit} AI queries per month using default keys. To continue, please configure your own API keys in Settings or upgrade to Pro.`
+    );
+  }
+  return quota;
+}
+
 export function validateScriptSafety(code: string): void {
   const blockedKeywords = [
     /\bprocess\b/,
