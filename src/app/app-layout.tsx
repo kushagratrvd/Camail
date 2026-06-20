@@ -112,7 +112,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const isLandingPage = pathname === "/";
 
   if (isLandingPage) {
-    return <div className="w-screen min-h-screen bg-[#0f0e13]">{children}</div>;
+    return <div className="w-full min-h-screen bg-[#0f0e13]">{children}</div>;
   }
 
   // Guard: don't render theme-dependent UI until client has resolved dark mode or session is validated
