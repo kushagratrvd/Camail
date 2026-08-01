@@ -10,6 +10,11 @@ import { registerGoogleCalendarWebhook, registerGmailWebhook } from "./lib/webho
 import * as crypto from "node:crypto";
 import { ensureCredentialsSynced } from "./corsair";
 
+const extraOrigins = env.TRUSTED_ORIGINS
+    ? env.TRUSTED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+const trustedOrigins = Array.from(new Set([env.BETTER_AUTH_URL, ...extraOrigins]));
+
 export const auth = betterAuth({
     database: drizzleAdapter(db, {
         provider: "pg",
@@ -22,10 +27,7 @@ export const auth = betterAuth({
         }
     }),
     baseURL: env.BETTER_AUTH_URL,
-    trustedOrigins: [
-        "https://camail.kushagratrivedi.me",
-        "https://camail.vercel.app",
-    ],
+    trustedOrigins,
     socialProviders: {
         google: {
             clientId: env.GOOGLE_CLIENT_ID,

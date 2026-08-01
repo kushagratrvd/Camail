@@ -15,6 +15,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: z.string(),
     GOOGLE_CLIENT_SECRET: z.string(),
     ENCRYPTION_SECRET: z.string().min(32),
+    TRUSTED_ORIGINS: z.string().optional(),
   },
 
   /**
@@ -37,6 +38,7 @@ export const env = createEnv({
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
     ENCRYPTION_SECRET: process.env.ENCRYPTION_SECRET,
+    TRUSTED_ORIGINS: process.env.TRUSTED_ORIGINS,
     // NEXT_PUBLIC_CLIENTVAR: process.env.NEXT_PUBLIC_CLIENTVAR,
   },
   /**

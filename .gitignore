@@ -45,4 +45,6 @@ yarn-error.log*
 # idea files
 .idea
 
+# md files
 plans.md
+Securing User API Keys.md

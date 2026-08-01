@@ -10,8 +10,10 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - `src/components/markdown-renderer.tsx` — rich Markdown rendering component for chat message bubbles supporting bold text, lists, headers, code blocks, links, blockquotes (`>`), and horizontal rules (`---` / `***`)
+- `TRUSTED_ORIGINS` environment variable — optional comma-separated list of additional trusted origins for Better Auth CORS validation
 
 ### Changed
+- `src/server/auth.ts`: dynamically derive Better Auth `trustedOrigins` from `BETTER_AUTH_URL` and optional `TRUSTED_ORIGINS` env variable instead of hardcoded strings
 - Chat page: message bubbles now render full formatted Markdown (**Subject:** bolding, structured lists, quotes) instead of plain text strings
 - Chat API route: updated email body script helper and system prompt to strip raw HTML tags (`<!DOCTYPE html>`, `<style>`, etc.) before summarizing emails
 - `next.config.js`: updated CSP `script-src` directive to include `'unsafe-inline'` for Next.js inline script hydration and Turbopack dev mode support
