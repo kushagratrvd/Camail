@@ -87,22 +87,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     enabled: !!session?.user?.id,
   });
 
-  const hasSynced = useRef(false);
 
-  useEffect(() => {
-    if (session?.user?.id && !hasSynced.current) {
-      hasSynced.current = true;
-      fetch("/api/auth/sync", { method: "POST" })
-        .then((res) => res.json())
-        .then((data) => {
-          if (data && (data.success || !data.error)) {
-            void utils.gmail.searchEmails.invalidate();
-            void utils.calendar.searchEvents.invalidate();
-          }
-        })
-        .catch(console.error);
-    }
-  }, [session?.user?.id, utils]);
 
   const isLandingPage = pathname === "/";
   const isPublicPage = isLandingPage || pathname === "/privacy" || pathname === "/terms" || pathname.startsWith("/docs");

@@ -17,8 +17,26 @@ export const corsairAccounts = pgTable('corsair_accounts', {
     integrationId: text('integration_id').notNull().references(() => corsairIntegrations.id),
     config: jsonb('config').notNull().default({}),
     dek: text('dek'),
+    status: text('status').notNull().default('DISCONNECTED'), // CONNECTED | SYNCING | RECONNECT_REQUIRED | DISCONNECTED | ERROR
+    statusError: text('status_error'),
+    accountEmail: text('account_email'),
 }, (table) => [
     index('accounts_tenant_idx').on(table.tenantId),
+]);
+
+export const corsairWebhooks = pgTable('corsair_webhooks', {
+    id: text('id').primaryKey(),
+    tenantId: text('tenant_id').notNull(),
+    plugin: text('plugin').notNull(), // 'gmail' | 'googlecalendar'
+    historyId: text('history_id'),
+    watchExpiration: timestamp('watch_expiration', { withTimezone: true }),
+    channelId: text('channel_id'),
+    resourceId: text('resource_id'),
+    channelExpiration: timestamp('channel_expiration', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
+}, (table) => [
+    index('webhooks_tenant_plugin_idx').on(table.tenantId, table.plugin),
 ]);
 
 export const corsairEntities = pgTable('corsair_entities', {

@@ -3,6 +3,7 @@ import { gmailRouter } from "@/server/api/routers/gmail";
 import { activityRouter } from "@/server/api/routers/activity";
 import { chatRouter } from "@/server/api/routers/chat";
 import { apiKeysRouter } from "@/server/api/routers/apiKeys";
+import { integrationsRouter } from "@/server/api/routers/integrations";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -16,6 +17,7 @@ export const appRouter = createTRPCRouter({
   activity: activityRouter,
   chat: chatRouter,
   apiKeys: apiKeysRouter,
+  integrations: integrationsRouter,
 });
 
 // export type definition of API

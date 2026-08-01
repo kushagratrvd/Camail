@@ -3,6 +3,10 @@ import { createAccountKeyManager } from 'corsair/core';
 import { conn } from '@/server/db';
 import { registerGoogleCalendarWebhook } from '@/server/lib/webhooks';
 
+import { db } from '@/server/db';
+import { corsairAccounts, corsairIntegrations } from '@/server/db/schema';
+import { and, eq } from 'drizzle-orm';
+
 const watchExpirations = new Map<string, number>();
 
 export function setWatchExpiration(tenantId: string, expiration: number) {
@@ -12,6 +16,22 @@ export function setWatchExpiration(tenantId: string, expiration: number) {
 export async function renewWatchesIfNeeded(tenantId: string) {
   const kek = process.env.CORSAIR_KEK;
   if (!kek) return;
+
+  const integration = await db.query.corsairIntegrations.findFirst({
+    where: eq(corsairIntegrations.name, 'googlecalendar'),
+  });
+  if (!integration) return;
+
+  const calAccount = await db.query.corsairAccounts.findFirst({
+    where: and(
+      eq(corsairAccounts.tenantId, tenantId),
+      eq(corsairAccounts.integrationId, integration.id)
+    ),
+  });
+
+  if (!calAccount || calAccount.status !== 'CONNECTED') {
+    return;
+  }
   
   const database = createCorsairDatabase(conn);
   const now = Date.now();
@@ -20,8 +40,6 @@ export async function renewWatchesIfNeeded(tenantId: string) {
   const expiration = watchExpirations.get(tenantId);
   
   if (!expiration || (expiration - now) < twoDays) {
-    console.log(`[Watch Renewal] Checking calendar watch for ${tenantId}`);
-    
     const calKm = createAccountKeyManager({ 
       authType: 'oauth_2', 
       integrationName: 'googlecalendar', 

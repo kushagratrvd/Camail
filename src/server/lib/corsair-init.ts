@@ -49,11 +49,30 @@ export async function syncGoogleCredentialsFromEnv() {
       database,
     });
     
-    if (!integration.dek) {
-      await km.issue_new_dek();
+    try {
+      if (!integration.dek) {
+        await km.issue_new_dek();
+      }
+      await km.set_client_id(clientId);
+      await km.set_client_secret(clientSecret);
+    } catch (e) {
+      console.warn(`[corsair-init] Resetting corrupted config and re-issuing DEK for ${pluginName}...`);
+      await database.db
+        .updateTable('corsair_integrations')
+        .set({ config: {}, dek: null, updated_at: new Date() })
+        .where('id', '=', integration.id)
+        .execute();
+
+      const freshKm = createIntegrationKeyManager({
+        authType: 'oauth_2',
+        integrationName: pluginName,
+        kek,
+        database,
+      });
+
+      await freshKm.issue_new_dek();
+      await freshKm.set_client_id(clientId);
+      await freshKm.set_client_secret(clientSecret);
     }
-    
-    await km.set_client_id(clientId);
-    await km.set_client_secret(clientSecret);
   }
 }

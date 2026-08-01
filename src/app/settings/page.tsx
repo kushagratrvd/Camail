@@ -26,6 +26,28 @@ export default function SettingsPage() {
   const [anthropicKey, setAnthropicKey] = useState("");
   const [isSavingKeys, setIsSavingKeys] = useState(false);
 
+  // Integration Status
+  const {
+    data: statusData,
+    refetch: refetchIntegrations,
+  } = api.integrations.getStatus.useQuery(undefined, {
+    enabled: !!session,
+    refetchInterval: (query: { state: { data?: { gmail?: { status: string }; calendar?: { status: string } } } }) => {
+      // Poll every 3 seconds if any integration is in SYNCING state
+      const data = query.state.data;
+      if (data?.gmail?.status === "SYNCING" || data?.calendar?.status === "SYNCING") {
+        return 3000;
+      }
+      return false;
+    },
+  });
+
+  const disconnectMutation = api.integrations.disconnect.useMutation({
+    onSuccess: () => {
+      refetchIntegrations();
+    },
+  });
+
   // Server-side key status
   const {
     data: keyStatus,
@@ -54,6 +76,99 @@ export default function SettingsPage() {
       setTimeout(() => setIsSaved(false), 2000);
     },
   });
+
+  const renderStatusBadge = (
+    integration: { status: string; accountEmail: string | null; error: string | null } | undefined,
+    pluginName: "gmail" | "googlecalendar"
+  ) => {
+    switch (integration?.status) {
+      case "CONNECTED":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
+              Connected {integration.accountEmail ? `(${integration.accountEmail})` : ""}
+            </span>
+            <button
+              onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
+              disabled={disconnectMutation.isPending}
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+            >
+              Disconnect
+            </button>
+          </div>
+        );
+      case "SYNCING":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 animate-pulse">
+              <Loader2 className="w-3 h-3 animate-spin" /> Syncing...
+            </span>
+            <button
+              onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
+              disabled={disconnectMutation.isPending}
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+            >
+              Disconnect
+            </button>
+          </div>
+        );
+      case "RECONNECT_REQUIRED":
+        return (
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+              Reconnect Required
+            </span>
+            <a
+              href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
+              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1"
+            >
+              Reconnect
+            </a>
+            <button
+              onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
+              disabled={disconnectMutation.isPending}
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+            >
+              Disconnect
+            </button>
+          </div>
+        );
+      case "ERROR":
+        return (
+          <div className="flex items-center gap-2">
+            <span
+              className="text-[11px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800"
+              title={integration.error || ""}
+            >
+              Sync Error
+            </span>
+            <a
+              href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
+              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1"
+            >
+              Retry
+            </a>
+            <button
+              onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
+              disabled={disconnectMutation.isPending}
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+            >
+              Disconnect
+            </button>
+          </div>
+        );
+      case "DISCONNECTED":
+      default:
+        return (
+          <a
+            href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
+            className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 transition-colors shadow-xs"
+          >
+            Connect
+          </a>
+        );
+    }
+  };
 
   useEffect(() => {
     try {
@@ -179,30 +294,36 @@ export default function SettingsPage() {
                 Integrations Status
               </h2>
               <div className="space-y-4">
-                <div className="flex items-center justify-between p-3.5 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
+                {/* Gmail Integration */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50">
                       <Mail className="w-4 h-4" />
                     </div>
                     <div>
-                      <h4 className="text-xs font-bold text-zinc-805 dark:text-zinc-200">Gmail Plugin</h4>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Read, write and search cached DB</p>
+                      <h4 className="text-xs font-bold text-zinc-805 dark:text-zinc-200">Gmail</h4>
+                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Read, summarize, and draft emails</p>
                     </div>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 shadow-sm" title="Connected" />
+                  <div>
+                    {renderStatusBadge(statusData?.gmail, "gmail")}
+                  </div>
                 </div>
 
-                <div className="flex items-center justify-between p-3.5 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
+                {/* Calendar Integration */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50">
                       <Calendar className="w-4 h-4" />
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-zinc-805 dark:text-zinc-200">Google Calendar</h4>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Weekly views and event invites</p>
+                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Schedule events and check availability</p>
                     </div>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-zinc-900 dark:bg-zinc-100 shadow-sm" title="Connected" />
+                  <div>
+                    {renderStatusBadge(statusData?.calendar, "googlecalendar")}
+                  </div>
                 </div>
               </div>
             </div>

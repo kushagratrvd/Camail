@@ -6,6 +6,7 @@ import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { db } from '@/server/db';
 import { users } from '@/server/db/auth-schema';
+import { corsairAccounts } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { inngest } from '@/inngest/client';
 
@@ -32,11 +33,18 @@ export async function POST(req: NextRequest) {
 				const decoded = Buffer.from(pubSubParsed.data.message.data, 'base64').toString('utf-8');
 				const payloadParsed = GmailWatchPayloadSchema.safeParse(JSON.parse(decoded));
 				if (payloadParsed.success) {
-					const user = await db.query.users.findFirst({
-						where: eq(users.email, payloadParsed.data.emailAddress)
+					const corsairAccount = await db.query.corsairAccounts.findFirst({
+						where: eq(corsairAccounts.accountEmail, payloadParsed.data.emailAddress)
 					});
-					if (user) {
-						tenantId = user.id;
+					if (corsairAccount) {
+						tenantId = corsairAccount.tenantId;
+					} else {
+						const user = await db.query.users.findFirst({
+							where: eq(users.email, payloadParsed.data.emailAddress)
+						});
+						if (user) {
+							tenantId = user.id;
+						}
 					}
 				}
 			} catch (e) {

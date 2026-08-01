@@ -109,6 +109,29 @@ export function CalendarPanel() {
     return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
+  const { data: statusData } = api.integrations.getStatus.useQuery();
+  const calStatus = statusData?.calendar?.status;
+
+  if (calStatus === "DISCONNECTED") {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-3xl min-h-[400px] shadow-sm">
+        <div className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center mb-4 border border-zinc-200 dark:border-zinc-700">
+          <CalendarIcon className="w-6 h-6" />
+        </div>
+        <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-100 mb-1">Google Calendar is Not Connected</h3>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mb-6 leading-relaxed">
+          Connect your Google Calendar in Settings to view events, schedule invites, and check availability.
+        </p>
+        <a
+          href="/settings"
+          className="px-5 py-2.5 text-xs font-bold text-white dark:text-zinc-900 bg-zinc-900 dark:bg-zinc-100 hover:bg-zinc-800 dark:hover:bg-zinc-200 rounded-full shadow-sm transition-all"
+        >
+          Go to Settings
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-6 w-full min-h-[600px] text-zinc-800 dark:text-zinc-100">
       {/* Top Navigation Controls */}

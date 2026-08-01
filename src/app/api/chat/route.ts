@@ -10,7 +10,7 @@ import { z } from 'zod';
 import { auth } from '@/server/auth';
 import { headers } from 'next/headers';
 import { db } from '@/server/db';
-import { corsairChats } from '@/server/db/schema';
+import { corsairChats, corsairAccounts, corsairIntegrations } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { ChatRequestSchema } from '@/server/lib/schemas';
 import { getDecryptedKeys } from '@/server/services/api-keys';
@@ -149,6 +149,18 @@ export async function POST(req: Request) {
     }
     const contextMessages = safeMessages.slice(startIndex);
 
+    const userAccounts = await db.query.corsairAccounts.findMany({
+      where: eq(corsairAccounts.tenantId, tenantId),
+    });
+    const userIntegrations = await db.query.corsairIntegrations.findMany();
+    const integrationMap = new Map(userIntegrations.map((i) => [i.id, i.name]));
+
+    const gmailAcc = userAccounts.find((a) => integrationMap.get(a.integrationId) === 'gmail');
+    const calAcc = userAccounts.find((a) => integrationMap.get(a.integrationId) === 'googlecalendar');
+
+    const gmailStatus = gmailAcc?.status || 'DISCONNECTED';
+    const calStatus = calAcc?.status || 'DISCONNECTED';
+
     const result = streamText({
       model: modelInstance,
       messages: await convertToModelMessages(contextMessages),
@@ -159,6 +171,16 @@ You can read emails, send emails, create calendar events, and more.
 TOPIC CONSTRAINT:
 - You must ONLY answer questions or perform tasks related to Google Calendar, Gmail, and managing email/calendar workflows.
 - If the user asks general knowledge questions, programming questions, or any other topic unrelated to Gmail, Google Calendar, or Corsair, politely refuse to answer, stating that you are an assistant dedicated to managing their emails and calendar.
+
+CONNECTED INTEGRATIONS STATUS:
+- Gmail: ${gmailStatus}${gmailAcc?.accountEmail ? ` (${gmailAcc.accountEmail})` : ''}
+- Google Calendar: ${calStatus}${calAcc?.accountEmail ? ` (${calAcc.accountEmail})` : ''}
+
+INTEGRATION GUARDRAILS:
+- If the user asks an email question and Gmail status is DISCONNECTED, politely inform them that Gmail is not connected and direct them to connect it in Settings.
+- If Gmail status is SYNCING, inform them that their inbox is currently setting up and to try again in a few moments.
+- If Gmail status is RECONNECT_REQUIRED, inform them that their Gmail session expired and to reconnect in Settings.
+- Same rules apply for Google Calendar questions if Calendar status is not CONNECTED.
 
 USER CONTEXT:
 - The user's name is ${userName}. When writing emails on their behalf, ALWAYS sign off with their actual name (${userName}), not placeholders like "[your name]".
