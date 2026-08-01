@@ -30,6 +30,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { MarkdownRenderer } from "@/components/markdown-renderer";
 
 export default function ChatPage() {
   const { data: session, isPending } = useSession();
@@ -295,8 +296,8 @@ export default function ChatPage() {
                           switch (part.type) {
                             case 'text':
                               return (
-                                <div key={`${msg.id}-${i}`} className="whitespace-pre-wrap break-words text-sm leading-relaxed">
-                                  {typeof part.text === 'string' ? part.text : JSON.stringify(part)}
+                                <div key={`${msg.id}-${i}`} className="break-words text-sm leading-relaxed">
+                                  <MarkdownRenderer content={typeof part.text === 'string' ? part.text : JSON.stringify(part)} />
                                 </div>
                               );
                             default:
@@ -304,8 +305,8 @@ export default function ChatPage() {
                           }
                         })
                       ) : (
-                        <div className="whitespace-pre-wrap break-words text-sm leading-relaxed font-light">
-                          {typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)}
+                        <div className="break-words text-sm leading-relaxed font-light">
+                          <MarkdownRenderer content={typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)} />
                         </div>
                       )}
                     </div>

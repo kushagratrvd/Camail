@@ -176,8 +176,9 @@ ${instructions}
 - Use 'run_script' to execute operations.
 - CRITICAL FOR RUN_SCRIPT: If you want to read or fetch data, your script MUST explicitly use the \`return\` keyword at the top level (e.g. \`return await corsair.gmail.api...\`). Otherwise, it will return null!
 - CRITICAL FOR RUN_SCRIPT WRAPPING: DO NOT wrap your script in an outer async function definition (e.g. \`async () => { ... }\` or \`async function() { ... }\`). Write your code directly as flat, top-level statements. Your script is already executed inside an async IIFE wrapper. If you wrap it, it will return the function definition object instead of executing it, resulting in a 'null' or empty output!
-- CRITICAL FOR READING EMAIL BODIES: The Gmail API returns the email body as a base64url encoded string nested inside \`payload.body.data\` or \`payload.parts\`. In your scripts, you MUST decode it using a helper function. Example:
+- CRITICAL FOR READING EMAIL BODIES: The Gmail API returns the email body as a base64url encoded string nested inside \`payload.body.data\` or \`payload.parts\`. In your scripts, you MUST decode it using a helper function and strip any raw HTML/CSS tags to get clean plain text. Example:
   \`const decode = (data) => Buffer.from(data, 'base64').toString('utf8');
+  const cleanHtml = (html) => html.replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<script[\\s\\S]*?<\\/script>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();
   function extractBody(part) {
     if (part.mimeType === 'text/plain' && part.body?.data) return decode(part.body.data);
     if (part.parts) {
@@ -186,18 +187,21 @@ ${instructions}
         if (body) return body;
       }
     }
-    if (part.mimeType === 'text/html' && part.body?.data) return decode(part.body.data);
+    if (part.mimeType === 'text/html' && part.body?.data) return cleanHtml(decode(part.body.data));
     return "";
   }
   const msg = await corsair.gmail.api.messages.get({ id: 'MSG_ID', format: 'full' });
-  return extractBody(msg.payload) || decode(msg.payload.body?.data || "") || msg.snippet || "";\`
-  Always write and use this decoding logic when retrieving email contents to read the complete email body instead of just the snippet.
+  const rawBody = extractBody(msg.payload) || decode(msg.payload.body?.data || "") || msg.snippet || "";
+  return typeof rawBody === 'string' && rawBody.includes('<') ? cleanHtml(rawBody) : rawBody;\`
+  Always write and use this decoding and cleaning logic when retrieving email contents to read the complete email body instead of raw HTML or just the snippet.
+- CLEAN EMAIL OUTPUT & FORMATTING: When presenting email details or summaries to the user, ALWAYS strip out any raw HTML tags, doctypes (e.g. <!DOCTYPE html>), and CSS markup. Output clean, readable plain text.
+- Use Markdown formatting for your responses: bold key field labels (e.g. **Subject:**, **From:**, **Body:**), use numbered or bulleted lists for multiple emails, and organize information clearly.
 - To list or fetch calendar events, you MUST use \`events.getMany\` (NOT events.list). Example: \`return await corsair.googlecalendar.api.events.getMany({ calendarId: 'primary', timeMin: new Date().toISOString() })\`
 - For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: Buffer.from(emailContent).toString('base64url') })\`
 - For creating events, Corsair's schema expects the payload in \`event\`. Example: \`corsair.googlecalendar.api.events.create({ calendarId: 'primary', event: { summary: '...', start: { dateTime: '...' }, end: { dateTime: '...' } } })\`
 - The run_script tool often returns "null" for write operations (e.g. sending an email). This is normal behavior — assume success for write operations (send, create, delete, modify) if they return null.
 - NEVER retry the same tool call more than once. If a tool returns "null" or an unexpected result, inform the user and move on.
-- Keep your responses concise and friendly.`,
+- Keep your responses concise, well-formatted, and friendly.`,
       stopWhen: stepCountIs(5),
     });
 

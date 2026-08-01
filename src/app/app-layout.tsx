@@ -169,7 +169,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   ];
 
   return (
-    <div className="w-screen h-screen bg-white dark:bg-[#0f0e13] flex overflow-hidden relative transition-colors duration-200">
+    <div className="w-screen h-screen bg-white dark:bg-black flex overflow-hidden relative transition-colors duration-200">
       {/* Sidebar */}
       {session && (
         <aside className={`h-full bg-zinc-50/70 dark:bg-[#09080c]/60 backdrop-blur-md border-r border-zinc-200/80 dark:border-zinc-800/80 flex-col pt-6 pb-4 z-10 relative transition-all duration-300 ${
@@ -394,10 +394,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {/* Main Content Pane */}
-      <main className="flex-1 flex flex-col min-h-0 relative z-0 overflow-hidden bg-white dark:bg-[#0f0e13]">
+      <main className="flex-1 flex flex-col min-h-0 relative z-0 overflow-hidden bg-white dark:bg-black">
         {/* Top Bar Header */}
         {session && (
-          <header className="h-15 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 relative z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-[#0f0e13]">
+          <header className="h-15 px-4 sm:px-8 flex items-center justify-between flex-shrink-0 relative z-20 border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-black">
             <div className="flex items-center gap-3">
               {/* Sidebar Toggle Button */}
               <Tooltip>
@@ -462,7 +462,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         )}
 
         {/* Page children viewport */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-[#0f0e13]">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col bg-white dark:bg-black">
           {children}
         </div>
       </main>
