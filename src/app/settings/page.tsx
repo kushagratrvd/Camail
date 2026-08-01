@@ -2,8 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "@/lib/auth-client";
-import { z } from "zod";
-import { Mail, Calendar, Check, ShieldCheck, Loader2 } from "lucide-react";
+import { api } from "@/trpc/react";
+import { Mail, Calendar, Check, ShieldCheck, Loader2, Trash2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -12,33 +12,53 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-const CustomKeysSchema = z.object({
-  google: z.string().optional(),
-  openai: z.string().optional(),
-  anthropic: z.string().optional(),
-});
-
-type CustomKeys = z.infer<typeof CustomKeysSchema>;
-
 export default function SettingsPage() {
   const { data: session, isPending } = useSession();
-  const [customKeys, setCustomKeys] = useState<CustomKeys>({});
+
+  // Non-secret settings (still in localStorage)
   const [selectedModel, setSelectedModel] = useState("google/gemini-2.5-flash");
   const [customInstructions, setCustomInstructions] = useState("");
   const [isSaved, setIsSaved] = useState(false);
+
+  // API key form inputs (only held in state during editing, never persisted client-side)
+  const [googleKey, setGoogleKey] = useState("");
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [anthropicKey, setAnthropicKey] = useState("");
+  const [isSavingKeys, setIsSavingKeys] = useState(false);
+
+  // Server-side key status
+  const {
+    data: keyStatus,
+    isLoading: isKeyStatusLoading,
+    refetch: refetchKeyStatus,
+  } = api.apiKeys.getKeyStatus.useQuery(undefined, {
+    enabled: !!session,
+  });
+
+  const saveKeysMutation = api.apiKeys.saveKeys.useMutation({
+    onSuccess: () => {
+      setGoogleKey("");
+      setOpenaiKey("");
+      setAnthropicKey("");
+      refetchKeyStatus();
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    },
+    onSettled: () => setIsSavingKeys(false),
+  });
+
+  const deleteKeysMutation = api.apiKeys.deleteKeys.useMutation({
+    onSuccess: () => {
+      refetchKeyStatus();
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    },
+  });
 
   useEffect(() => {
     try {
       const savedModel = localStorage.getItem("corsair_selected_model");
       if (savedModel) setSelectedModel(savedModel);
-
-      const savedKeys = localStorage.getItem("corsair_custom_keys");
-      if (savedKeys) {
-        const parsed = CustomKeysSchema.safeParse(JSON.parse(savedKeys));
-        if (parsed.success) {
-          setCustomKeys(parsed.data);
-        }
-      }
 
       const savedInstructions = localStorage.getItem("corsair_custom_instructions");
       if (savedInstructions) setCustomInstructions(savedInstructions);
@@ -46,14 +66,6 @@ export default function SettingsPage() {
       console.error("Failed to parse settings from local storage", e);
     }
   }, []);
-
-  const handleKeyChange = (provider: keyof CustomKeys, val: string) => {
-    const newKeys = { ...customKeys, [provider]: val };
-    setCustomKeys(newKeys);
-    localStorage.setItem("corsair_custom_keys", JSON.stringify(newKeys));
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
-  };
 
   const handleModelChange = (val: string) => {
     setSelectedModel(val);
@@ -68,6 +80,25 @@ export default function SettingsPage() {
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
   };
+
+  const handleSaveKeys = () => {
+    // Only send non-empty keys
+    const payload: { google?: string; openai?: string; anthropic?: string } = {};
+    if (googleKey.trim()) payload.google = googleKey.trim();
+    if (openaiKey.trim()) payload.openai = openaiKey.trim();
+    if (anthropicKey.trim()) payload.anthropic = anthropicKey.trim();
+
+    if (Object.keys(payload).length === 0) return;
+
+    setIsSavingKeys(true);
+    saveKeysMutation.mutate(payload);
+  };
+
+  const handleDeleteKeys = () => {
+    deleteKeysMutation.mutate();
+  };
+
+  const hasAnyKey = keyStatus && (keyStatus.google || keyStatus.openai || keyStatus.anthropic);
 
   const getInitials = (name: string) => {
     return name
@@ -235,50 +266,126 @@ export default function SettingsPage() {
                 API Key Credentials
               </h3>
 
-              <div>
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Google API Key (for Gemini)
-                </label>
-                <input
-                  type="password"
-                  value={customKeys.google || ""}
-                  onChange={(e) => handleKeyChange("google", e.target.value)}
-                  className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
-                  placeholder="AIzaSy..."
-                />
-              </div>
+              {isKeyStatusLoading ? (
+                <div className="py-4 flex items-center justify-center">
+                  <Loader2 className="animate-spin w-4 h-4 text-zinc-500" />
+                </div>
+              ) : (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Google API Key (for Gemini)
+                    </label>
+                    {keyStatus?.google && !googleKey ? (
+                      <div className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-full px-4 py-2.5 text-sm text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                        <span className="font-mono">{keyStatus.google}</span>
+                        <button
+                          type="button"
+                          onClick={() => setGoogleKey(" ")}
+                          className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium uppercase tracking-wider transition-colors"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="password"
+                        value={googleKey}
+                        onChange={(e) => setGoogleKey(e.target.value)}
+                        className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
+                        placeholder="AIzaSy..."
+                      />
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  OpenAI API Key (for GPT-5)
-                </label>
-                <input
-                  type="password"
-                  value={customKeys.openai || ""}
-                  onChange={(e) => handleKeyChange("openai", e.target.value)}
-                  className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
-                  placeholder="sk-proj-..."
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      OpenAI API Key (for GPT-5)
+                    </label>
+                    {keyStatus?.openai && !openaiKey ? (
+                      <div className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-full px-4 py-2.5 text-sm text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                        <span className="font-mono">{keyStatus.openai}</span>
+                        <button
+                          type="button"
+                          onClick={() => setOpenaiKey(" ")}
+                          className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium uppercase tracking-wider transition-colors"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="password"
+                        value={openaiKey}
+                        onChange={(e) => setOpenaiKey(e.target.value)}
+                        className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
+                        placeholder="sk-proj-..."
+                      />
+                    )}
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                  Anthropic API Key (for Claude)
-                </label>
-                <input
-                  type="password"
-                  value={customKeys.anthropic || ""}
-                  onChange={(e) => handleKeyChange("anthropic", e.target.value)}
-                  className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
-                  placeholder="sk-ant-..."
-                />
-              </div>
+                  <div>
+                    <label className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                      Anthropic API Key (for Claude)
+                    </label>
+                    {keyStatus?.anthropic && !anthropicKey ? (
+                      <div className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-full px-4 py-2.5 text-sm text-zinc-500 dark:text-zinc-400 flex items-center justify-between">
+                        <span className="font-mono">{keyStatus.anthropic}</span>
+                        <button
+                          type="button"
+                          onClick={() => setAnthropicKey(" ")}
+                          className="text-[10px] text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 font-medium uppercase tracking-wider transition-colors"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    ) : (
+                      <input
+                        type="password"
+                        value={anthropicKey}
+                        onChange={(e) => setAnthropicKey(e.target.value)}
+                        className="w-full bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 text-zinc-800 dark:text-zinc-100 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-400 dark:focus:border-zinc-650 focus:ring-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 transition-all placeholder-zinc-400 dark:placeholder-zinc-600"
+                        placeholder="sk-ant-..."
+                      />
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-center gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={handleSaveKeys}
+                      disabled={isSavingKeys || (!googleKey.trim() && !openaiKey.trim() && !anthropicKey.trim())}
+                      className="px-5 py-2 rounded-full text-xs font-bold bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200 disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-sm flex items-center gap-2"
+                    >
+                      {isSavingKeys && <Loader2 className="w-3 h-3 animate-spin" />}
+                      Save Keys
+                    </button>
+
+                    {hasAnyKey && (
+                      <button
+                        type="button"
+                        onClick={handleDeleteKeys}
+                        disabled={deleteKeysMutation.isPending}
+                        className="px-4 py-2 rounded-full text-xs font-bold text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 hover:bg-red-50 dark:hover:bg-red-950/20 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center gap-1.5"
+                      >
+                        {deleteKeysMutation.isPending ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-3 h-3" />
+                        )}
+                        Delete All Keys
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             <div className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-2 leading-relaxed bg-zinc-50/50 dark:bg-[#0f0e13]/60 p-4 rounded-3xl border border-zinc-200 dark:border-zinc-800 flex items-start gap-3">
               <ShieldCheck className="w-5 h-5 text-zinc-650 flex-shrink-0 mt-0.5" />
               <p className="font-light">
-                <strong>Privacy Notice:</strong> API keys are saved exclusively in your browser's <code>localStorage</code> and never sent directly to our database. Requests are processed directly via secure client pipelines.
+                <strong>Privacy Notice:</strong> API keys are encrypted with AES-256-GCM and stored securely on our server. They are never stored in your browser or exposed in network requests.
               </p>
             </div>
           </div>

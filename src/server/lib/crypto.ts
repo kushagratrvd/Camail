@@ -45,3 +45,52 @@ export function decryptTenantId(encryptedToken: string | null): string | null {
         return null;
     }
 }
+
+// --- Generic value encryption (for API keys) ---
+// Uses a SEPARATE secret from CORSAIR_KEK so that key rotation
+// for tenant IDs and API keys are independent.
+
+const getApiKeySecret = () => {
+    const secret = process.env.ENCRYPTION_SECRET;
+    if (!secret) throw new Error('ENCRYPTION_SECRET is not set in environment');
+
+    return crypto.createHash('sha256').update(secret).digest();
+};
+
+export function encryptValue(plaintext: string): string {
+    const key = getApiKeySecret();
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv(ALGO, key, iv);
+
+    let encrypted = cipher.update(plaintext, 'utf8');
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    const authTag = cipher.getAuthTag();
+
+    const combined = Buffer.concat([iv, authTag, encrypted]);
+    return combined.toString('base64url');
+}
+
+export function decryptValue(ciphertext: string): string | null {
+    if (!ciphertext) return null;
+
+    try {
+        const key = getApiKeySecret();
+        const combined = Buffer.from(ciphertext, 'base64url');
+
+        if (combined.length < 28) return null;
+
+        const iv = combined.subarray(0, 12);
+        const authTag = combined.subarray(12, 28);
+        const encryptedPayload = combined.subarray(28);
+
+        const decipher = crypto.createDecipheriv(ALGO, key, iv);
+        decipher.setAuthTag(authTag);
+
+        let decrypted = decipher.update(encryptedPayload);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+
+        return decrypted.toString('utf8');
+    } catch (e) {
+        return null;
+    }
+}

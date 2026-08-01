@@ -13,6 +13,7 @@ import { db } from '@/server/db';
 import { corsairChats } from '@/server/db/schema';
 import { eq } from 'drizzle-orm';
 import { ChatRequestSchema } from '@/server/lib/schemas';
+import { getDecryptedKeys } from '@/server/services/api-keys';
 
 function getModelInstance(
   modelString: string,
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify(parsed.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
-  const { messages, model, keys, instructions } = parsed.data;
+  const { messages, model, instructions } = parsed.data;
 
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -73,6 +74,9 @@ export async function POST(req: Request) {
   if (!tenantId) {
     return new Response('Unauthorized', { status: 401 });
   }
+
+  // Fetch API keys from service layer (decrypted server-side)
+  const keys = await getDecryptedKeys(tenantId);
 
   const [provider] = model.split('/');
   const hasCustomKey = keys && !!keys[provider as keyof typeof keys];

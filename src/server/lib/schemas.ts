@@ -3,11 +3,6 @@ import { z } from 'zod';
 export const ChatRequestSchema = z.object({
   messages: z.array(z.unknown()), // We rely on Vercel AI SDK's UIMessage to type this internally, but we can ensure it's an array
   model: z.string().optional().default('google/gemini-2.5-flash'),
-  keys: z.object({
-    google: z.string().optional(),
-    openai: z.string().optional(),
-    anthropic: z.string().optional(),
-  }).optional().default({}),
   instructions: z.string().optional(),
 });
 

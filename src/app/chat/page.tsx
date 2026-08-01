@@ -6,7 +6,6 @@ import { useChat, type UIMessage } from '@ai-sdk/react';
 import { api } from "@/trpc/react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useVoiceInput } from "@/hooks/use-voice-input";
-import { z } from "zod";
 import Link from "next/link";
 import {
   Mail,
@@ -26,27 +25,11 @@ import {
   DropdownMenuItem,
 } from "@/components/ui/dropdown-menu";
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-} from "@/components/ui/sheet";
-import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-const CustomKeysSchema = z.object({
-  google: z.string().optional(),
-  openai: z.string().optional(),
-  anthropic: z.string().optional(),
-});
-
-type CustomKeys = z.infer<typeof CustomKeysSchema>;
 
 export default function ChatPage() {
   const { data: session, isPending } = useSession();
@@ -92,22 +75,12 @@ export default function ChatPage() {
   }, [voiceError]);
 
   const [selectedModel, setSelectedModel] = useState('google/gemini-2.5-flash');
-  const [customKeys, setCustomKeys] = useState<CustomKeys>({});
   const [customInstructions, setCustomInstructions] = useState('');
-  const [showSettings, setShowSettings] = useState(false);
 
   useEffect(() => {
     try {
       const savedModel = localStorage.getItem('corsair_selected_model');
       if (savedModel) setSelectedModel(savedModel);
-      
-      const savedKeys = localStorage.getItem('corsair_custom_keys');
-      if (savedKeys) {
-        const parsed = CustomKeysSchema.safeParse(JSON.parse(savedKeys));
-        if (parsed.success) {
-          setCustomKeys(parsed.data);
-        }
-      }
 
       const savedInstructions = localStorage.getItem('corsair_custom_instructions');
       if (savedInstructions) setCustomInstructions(savedInstructions);
@@ -119,12 +92,6 @@ export default function ChatPage() {
   const handleModelSelect = (val: string) => {
     setSelectedModel(val);
     localStorage.setItem('corsair_selected_model', val);
-  };
-
-  const handleKeyChange = (provider: 'google' | 'openai' | 'anthropic', val: string) => {
-    const newKeys = { ...customKeys, [provider]: val };
-    setCustomKeys(newKeys);
-    localStorage.setItem('corsair_custom_keys', JSON.stringify(newKeys));
   };
   
   const { messages, setMessages, sendMessage, status } = useChat({
@@ -362,48 +329,7 @@ export default function ChatPage() {
           )}
 
           {/* settings side panel */}
-          <Sheet open={showSettings} onOpenChange={setShowSettings}>
-            <SheetContent side="right" className="bg-[#0f0e13]/95 backdrop-blur-md border-l border-zinc-800 text-zinc-100 p-6 sm:max-w-md">
-              <SheetHeader>
-                <SheetTitle className="text-zinc-100 font-bold">Provider API Keys</SheetTitle>
-                <SheetDescription className="text-zinc-400 font-light mt-1">
-                  Keys are stored locally in your browser. All models require a valid API key.
-                </SheetDescription>
-              </SheetHeader>
-              <div className="space-y-5 mt-6">
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Google API Key</label>
-                  <input 
-                    type="password" 
-                    value={customKeys.google || ''}
-                    onChange={(e) => handleKeyChange('google', e.target.value)}
-                    className="w-full bg-[#09080c] border border-zinc-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 text-zinc-100"
-                    placeholder="AIza..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-1.5">OpenAI API Key</label>
-                  <input 
-                    type="password" 
-                    value={customKeys.openai || ''}
-                    onChange={(e) => handleKeyChange('openai', e.target.value)}
-                    className="w-full bg-[#09080c] border border-zinc-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 text-zinc-100"
-                    placeholder="sk-..."
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-zinc-400 mb-1.5">Anthropic API Key</label>
-                  <input 
-                    type="password" 
-                    value={customKeys.anthropic || ''}
-                    onChange={(e) => handleKeyChange('anthropic', e.target.value)}
-                    className="w-full bg-[#09080c] border border-zinc-800 rounded-full px-4 py-2.5 text-sm outline-none focus:border-zinc-600 focus:ring-1 focus:ring-zinc-600 text-zinc-100"
-                    placeholder="sk-ant-..."
-                  />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
+
 
           <div className="flex flex-col gap-2">
             <div className="flex items-center gap-2.5 pl-4">
@@ -439,13 +365,12 @@ export default function ChatPage() {
               
               <Tooltip>
                 <TooltipTrigger asChild>
-                  <button 
-                    onClick={() => setShowSettings(true)}
-                    type="button"
+                  <Link
+                    href="/settings"
                     className="p-1.5 rounded-full transition-colors cursor-pointer text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-650"
                   >
                     <SettingsIcon className="w-3.5 h-3.5" />
-                  </button>
+                  </Link>
                 </TooltipTrigger>
                 <TooltipContent>
                   <p>Settings & API Keys</p>
@@ -462,7 +387,7 @@ export default function ChatPage() {
                   return;
                 }
                 setChatError(null);
-                sendMessage({ text: chatInput }, { body: { model: selectedModel, keys: customKeys, instructions: customInstructions } });
+                sendMessage({ text: chatInput }, { body: { model: selectedModel, instructions: customInstructions } });
                 setChatInput('');
               }}
             >
