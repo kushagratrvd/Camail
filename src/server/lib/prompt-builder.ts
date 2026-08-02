@@ -151,7 +151,11 @@ function buildEmailExamplesSection(userName: string): string {
 SENDING, REPLYING & DRAFTS
 ═══════════════════════════════
 SENDING: Use the send_email tool — pass to, subject, body as plain text. No MIME construction needed.
-  Example: send_email({ to: "alice@example.com", subject: "Hello", body: "Hi Alice,\\n\\nBody here.\\n\\n-- ${userName}" })
+  Single recipient: send_email({ to: "alice@example.com", subject: "Hello", body: "Hi Alice,\\n\\nBody here.\\n\\n-- ${userName}" })
+  SENDING TO MULTIPLE: Passing an array sends a SEPARATE individual email to EACH address — not one email to all of them.
+  The entire array counts as ONE tool call, so you can send 30, 50, or 100 emails in a single call.
+  Example: send_email({ to: ["a@x.com", "b@x.com", "c@x.com"], subject: "Hello", body: "..." })
+  → This sends 3 separate individual emails, one to each person.
   No confirmation needed — send immediately when the user requests it.
 
 REPLYING: Use the reply_to_message tool — pass originalMessageId and body. Thread headers are handled automatically.
@@ -172,8 +176,10 @@ Always include timeZone in event datetimes.`;
 
 function buildOutputSection(): string {
   return `═══════════════════════════════
-OUTPUT FORMATTING
+OUTPUT FORMATTING & MANDATORY RESPONSE
 ═══════════════════════════════
+- ALWAYS provide a friendly text message to the user summarizing the actions taken and results after performing any tool operation (e.g., "Successfully sent 30 emails to...").
+- NEVER end your response with only a tool call. You MUST write a final text summary for every request.
 - Strip all HTML tags, doctypes, and CSS before displaying email content.
 - Use Markdown: bold labels (**Subject:**, **From:**, **Date:**), numbered lists for multiple items.
 - Keep responses concise and friendly.`;

@@ -85,14 +85,14 @@ export default function SettingsPage() {
     switch (integration?.status) {
       case "CONNECTED":
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-              Connected {integration.accountEmail ? `(${integration.accountEmail})` : ""}
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0 flex items-center gap-1">
+              Connected {integration.accountEmail ? <span className="max-w-[140px] truncate opacity-90">({integration.accountEmail})</span> : ""}
             </span>
             <button
               onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
               disabled={disconnectMutation.isPending}
-              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               Disconnect
             </button>
@@ -100,17 +100,17 @@ export default function SettingsPage() {
         );
       case "SYNCING":
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800">
-              Connected {integration.accountEmail ? `(${integration.accountEmail})` : ""}
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 whitespace-nowrap shrink-0 flex items-center gap-1">
+              Connected {integration.accountEmail ? <span className="max-w-[120px] truncate opacity-90">({integration.accountEmail})</span> : ""}
             </span>
-            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2 py-0.5 rounded-full border border-blue-200 dark:border-blue-800 flex items-center gap-1 animate-pulse">
-              <Loader2 className="w-3 h-3 animate-spin" /> Syncing data...
+            <span className="text-[11px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950/40 px-2.5 py-1 rounded-full border border-blue-200 dark:border-blue-800 flex items-center gap-1.5 whitespace-nowrap shrink-0 animate-pulse">
+              <Loader2 className="w-3 h-3 animate-spin shrink-0" /> Syncing...
             </span>
             <button
               onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
               disabled={disconnectMutation.isPending}
-              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               Disconnect
             </button>
@@ -118,20 +118,20 @@ export default function SettingsPage() {
         );
       case "RECONNECT_REQUIRED":
         return (
-          <div className="flex items-center gap-2">
-            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
+            <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-2.5 py-1 rounded-full border border-amber-200 dark:border-amber-800 whitespace-nowrap shrink-0">
               Reconnect Required
             </span>
             <a
               href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
-              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1"
+              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1 whitespace-nowrap shrink-0"
             >
               Reconnect
             </a>
             <button
               onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
               disabled={disconnectMutation.isPending}
-              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               Disconnect
             </button>
@@ -139,23 +139,23 @@ export default function SettingsPage() {
         );
       case "ERROR":
         return (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             <span
-              className="text-[11px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800"
+              className="text-[11px] font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 px-2.5 py-1 rounded-full border border-red-200 dark:border-red-800 whitespace-nowrap shrink-0"
               title={integration.error || ""}
             >
               Sync Error
             </span>
             <a
               href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
-              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1"
+              className="text-xs text-blue-500 hover:underline font-bold px-2 py-1 whitespace-nowrap shrink-0"
             >
               Retry
             </a>
             <button
               onClick={() => disconnectMutation.mutate({ plugin: pluginName })}
               disabled={disconnectMutation.isPending}
-              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer"
+              className="text-xs text-red-500 hover:text-red-600 font-medium px-2 py-1 rounded-md hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors cursor-pointer whitespace-nowrap shrink-0"
             >
               Disconnect
             </button>
@@ -166,7 +166,7 @@ export default function SettingsPage() {
         return (
           <a
             href={`/api/connect?plugin=${pluginName}&tenantId=${session?.user?.id}`}
-            className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 transition-colors shadow-xs"
+            className="text-xs font-bold text-zinc-900 dark:text-zinc-100 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 px-3.5 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-700 transition-colors shadow-xs whitespace-nowrap shrink-0"
           >
             Connect
           </a>
@@ -299,33 +299,33 @@ export default function SettingsPage() {
               </h2>
               <div className="space-y-4">
                 {/* Gmail Integration */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50 shrink-0">
                       <Mail className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-zinc-805 dark:text-zinc-200">Gmail</h4>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Read, summarize, and draft emails</p>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">Gmail</h4>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-light truncate">Read, summarize, and draft emails</p>
                     </div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     {renderStatusBadge(statusData?.gmail, "gmail")}
                   </div>
                 </div>
 
                 {/* Calendar Integration */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-zinc-50/50 dark:bg-black/20 border border-zinc-200 dark:border-zinc-800 rounded-3xl overflow-hidden">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-8 h-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-zinc-100 flex items-center justify-center border border-zinc-200/50 dark:border-zinc-700/50 shrink-0">
                       <Calendar className="w-4 h-4" />
                     </div>
-                    <div>
-                      <h4 className="text-xs font-bold text-zinc-805 dark:text-zinc-200">Google Calendar</h4>
-                      <p className="text-[10px] text-zinc-450 dark:text-zinc-500 font-light">Schedule events and check availability</p>
+                    <div className="min-w-0">
+                      <h4 className="text-xs font-bold text-zinc-800 dark:text-zinc-200 truncate">Google Calendar</h4>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-light truncate">Schedule events and check availability</p>
                     </div>
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     {renderStatusBadge(statusData?.calendar, "googlecalendar")}
                   </div>
                 </div>

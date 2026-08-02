@@ -426,3 +426,213 @@
 | `src/app/api/chat/route.ts` | Added `maxRetries: 0` to `streamText()` to prevent the SDK from retrying 429 errors 3 times. Errors fail fast and reach the outer catch block, which returns proper `⚠️` error messages. |
 
 **Result:** `send_email` / `reply_to_message` / `create_draft` tools now register even when `accountEmail` is null (falls back to login email). Rate limit errors fail immediately instead of wasting 60s on retries.
+
+---
+
+## 31 · Settings Page Integration Status Badges UI Fix
+**Date:** 2026-08-02
+
+**Problem:** In the Settings page, when an integration status was `SYNCING`, the pill badges and "Disconnect" button wrapped awkwardly ("Syncing \n data...") and overflowed past the right border of the card into adjacent containers.
+
+**Root cause:**
+1. Lack of `whitespace-nowrap` on status pill texts caused multiline text wrapping inside badge pills.
+2. The narrow 5-column grid column (`md:col-span-5`) lacked `overflow-hidden` and `min-w-0` flex properties, causing fixed-width pill badges to spill over card boundaries.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/settings/page.tsx` | Added `whitespace-nowrap` and `shrink-0` to all status pills and buttons in `renderStatusBadge`. Truncated account email at `max-w-[120px]`. |
+| `src/app/settings/page.tsx` | Added `min-w-0`, `overflow-hidden`, and `flex-wrap` to integration card containers so badges wrap cleanly within the card bounds on narrow viewports. |
+
+**Result:** Integration status badges render on a clean single line ("Syncing...") and wrap responsively inside card boundaries without overflowing.
+
+---
+
+## 32 · Dedicated Email Tool Error Logging & Structured Errors
+**Date:** 2026-08-02
+
+**Problem:** When `send_email` / `reply_to_message` / `create_draft` tools failed (e.g. "invalid authentication credentials" from an expired OAuth token), the error was completely invisible:
+- No `console.error` in terminal logs (only `POST /api/chat 200` with no error trace)
+- The LLM received the raw thrown error via the AI SDK's internal tool error handling, but responded with a generic "An error occurred" instead of the actual error message
+- Impossible to debug without the error being logged
+
+**Root cause:** The dedicated tool `execute` handlers had no `try/catch` — they called `sendEmail()` / `replyToMessage()` / `createDraft()` directly. When those threw, the error propagated silently to the AI SDK.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Wrapped all three dedicated tool `execute` handlers in `try/catch` blocks. Errors are now logged with `console.error('[send_email Error]', msg)` and returned as `{ success: false, error: msg }` — giving the LLM a clear structured error to report to the user. |
+
+**Result:** Email tool errors are now visible in terminal logs (`[send_email Error] Gmail send failed: invalid authentication credentials`) and the LLM receives structured `{ success: false, error }` objects, enabling clear error reporting to the user.
+
+---
+
+## 33 · Multi-Recipient Bulk Email Support (`send_email`)
+**Date:** 2026-08-02
+
+**Problem:** Sending an email to multiple recipients required the LLM to make separate individual tool calls per recipient, hitting tool step limits (`stepCountIs(5)`) when sending to large lists of recipients (e.g. 30 recipients).
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Updated `send_email` schema: `to: z.union([z.string(), z.array(z.string())])`. Inside `execute`, mapped recipients array through `sendEmail()` using `Promise.allSettled()`. Returns `{ success, sent, failed, total }` for bulk calls. |
+| `src/server/lib/prompt-builder.ts` | Updated system prompt in `buildEmailExamplesSection` to instruct the LLM on passing an array of email strings for multi-recipient bulk sending in a single tool call. |
+
+**Result:** The LLM can now send an email to dozens of recipients in a single `send_email` tool call without getting constrained by LLM step budgets.
+
+---
+
+## 34 · Explicit Bulk Sending Tool Description & System Prompt Clarification
+**Date:** 2026-08-02
+
+**Problem:** The LLM needed crystal-clear guidance that passing an array to `send_email` sends *individual separate emails* to each recipient (not a single email with CC/BCC), and that the entire array counts as a single tool call regardless of recipient count (30, 50, 100).
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Updated `send_email` tool description to explicitly state that an array sends INDIVIDUAL separate emails to each person in a single tool call. |
+| `src/server/lib/prompt-builder.ts` | Updated `buildEmailExamplesSection` with detailed instructions emphasizing that an array sends 1-to-1 emails to each recipient in 1 tool call. |
+
+**Result:** The LLM has unequivocal instructions to use a single `send_email` tool call with an array of addresses for bulk emailing.
+
+---
+
+## 35 · Bulk Token Reuse Optimization & `UIMessage.parts` Text Extraction
+**Date:** 2026-08-02
+
+**Problem:**
+1. In bulk email sending, `sendEmail` fetched a new Gmail access token via `createAccountKeyManager` 30 separate times in parallel inside `Promise.allSettled`, causing 30 duplicate DB/KMS token lookups.
+2. `lastUserText` extraction in `route.ts` only checked `(lastUserMessage as any)?.content`, but Vercel AI SDK v4 `UIMessage` objects store message text inside `parts: [{ type: 'text', text: '...' }]`. Because `content` was empty, `lastUserText` was evaluated as `""`, breaking conditional prompt section triggers like `needsCalendarExamples`.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/server/lib/gmail-helpers.ts` | Exported `getGmailAccessToken` and created `sendEmailWithToken({ accessToken, ... })`. |
+| `src/app/api/chat/route.ts` | Updated `send_email` execute handler to fetch `accessToken` ONCE with `getGmailAccessToken(tenantId)` before the `Promise.allSettled` loop, passing `accessToken` to `sendEmailWithToken`. |
+| `src/app/api/chat/route.ts` | Updated `lastUserText` extraction to check `msg.parts` first before falling back to `msg.content`. |
+
+**Result:** Bulk email sending fetches the OAuth token once (1 lookup instead of 30), and user prompt text extraction accurately reads `UIMessage.parts` for conditional prompt section injection.
+
+---
+
+## 36 · Comprehensive Failure & API Response Logging for `send_email`
+**Date:** 2026-08-02
+
+**Problem:** When bulk emails failed inside `Promise.allSettled`, individual recipient errors were swallowed or omitted from server logs, making it impossible to see why specific calls failed.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/server/lib/gmail-helpers.ts` | Added `console.log` for request attempt (`to`, `from`), token length, and Gmail API response HTTP status code & statusText. Added `console.error` with full error body on `!res.ok`. |
+| `src/app/api/chat/route.ts` | Added `console.log` for recipient counts/array, token fetch result, and per-recipient failure reasons in `failed.forEach()`. Included `firstFailedReason` in returned tool result object so the LLM gets actionable error context. |
+
+**Result:** Terminal logs now output full diagnostic traces for every step of bulk sending (`[send_email] Attempting...`, `[gmail-helpers] Gmail API response... status: 401`, `[send_email] Recipient #1 failed:...`).
+
+---
+
+## 37 · Automatic OAuth Access Token Refresh in `getGmailAccessToken`
+**Date:** 2026-08-02
+
+**Problem:** `getGmailAccessToken(tenantId)` called raw `km.get_access_token()`, which reads the cached `access_token` string directly from the database without checking `expires_at` or refreshing expired tokens. When access tokens expired (after 1 hour), direct REST fetch calls to `https://gmail.googleapis.com/gmail/v1/users/me/messages/send` returned `401 UNAUTHENTICATED (Invalid Credentials)`.
+
+**Root cause:** Corsair's built-in token auto-refresh logic is triggered during `keyBuilder` execution on `corsair.withTenant().gmail.api` endpoint calls, but calling `km.get_access_token()` directly bypassed `keyBuilder`.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/server/lib/gmail-helpers.ts` | Updated `getGmailAccessToken(tenantId)`: Checks `expires_at` against current Unix time (with 5-minute safety margin). If expired/missing, uses `km.get_refresh_token()` + integration `client_id` & `client_secret` to POST to `https://oauth2.googleapis.com/token`. Persists the fresh `access_token` and `expires_at` into Postgres via `km.set_access_token` & `km.set_expires_at`. |
+
+**Result:** `getGmailAccessToken` is now self-healing: expired OAuth tokens are automatically refreshed via Google's OAuth2 endpoint and saved to the database before executing API requests.
+
+---
+
+## 38 · Tool Execution Fallback Summary UI & Mandatory LLM Response Rule
+**Date:** 2026-08-02
+
+**Problem:** Sometimes after executing a tool call (such as `send_email`), the LLM generated no trailing text response (`parts` contained only `tool-invocation` with `text = ""`). Because `chat/page.tsx` filtered out assistant messages with `!hasText` by returning `null`, the entire assistant response bubble vanished from the DOM, leaving a blank screen and making it appear as if the AI refused to respond.
+
+**Root cause:**
+1. LLM stopped generation after tool execution without emitting a text summary.
+2. Client-side message mapper in `chat/page.tsx` returned `null` for assistant messages lacking visible text parts, hiding tool execution results.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/server/lib/prompt-builder.ts` | Updated `buildOutputSection` to mandate text responses: *"ALWAYS provide a friendly text message to the user summarizing the actions taken and results after performing any tool operation. NEVER end your response with only a tool call."* |
+| `src/app/chat/page.tsx` | Added `getToolFallbackSummary()` helper in `chat/page.tsx`. When an assistant message has tool calls but no trailing text, renders a clean status badge (`✓ Successfully sent email to 30 recipients`) instead of returning `null`. |
+
+**Result:** The UI never renders a blank message bubble. If the model outputs a tool call without trailing text, the UI displays a clean completion summary badge (`✓ Successfully sent email to 30 recipients`).
+
+---
+
+## 39 · `accountEmail` DB Auto-Backfill & `onStepFinish` Model Step Logger
+**Date:** 2026-08-02
+
+**Problem:**
+1. `accountEmail` was `null` in `corsair_accounts` for accounts connected prior to adding email extraction in the OAuth callback. While tool registration had a session email fallback, `accountEmail: none` was logged and missing from system prompts.
+2. Long response times (40s+) made it unclear whether the LLM was calling tools, looping through reasoning steps, or hitting step limits (`stopWhen: stepCountIs(5)`).
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Added auto-backfill logic: when `gmailAcc` is found but `accountEmail` is null, automatically assigns `session?.user?.email` and asynchronously updates `corsairAccounts` in Postgres. |
+| `src/app/api/chat/route.ts` | Added `onStepFinish` callback to `streamText`: logs step `finishReason`, tool call names & arguments, tool execution results, and text lengths for full step-by-step visibility in terminal logs. |
+
+**Result:** `accountEmail` is permanently backfilled in Postgres upon first chat request (`accountEmail: kushagratrivedi962@gmail.com`), and terminal logs trace every model reasoning step and tool call execution (`[streamText Step] finishReason: tool-calls`, `[streamText ToolCall] Name: send_email`).
+
+---
+
+## 40 · TypeScript Type Fix for `streamText` ToolCall Logging
+**Date:** 2026-08-02
+
+**Problem:** TypeScript error in `route.ts`: `Property 'args' does not exist on type 'TypedToolCall<ToolSet>'`.
+
+**Root cause:** In Vercel AI SDK v4, tool call arguments are stored on the `input` property (or `args` on specific tool call types), so indexing `.args` on the strict `TypedToolCall` union raised a compiler type error.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Updated `onStepFinish` logging to cast `tc: any` and read `tc.input ?? tc.args` to safely extract tool call arguments without type errors. |
+
+**Result:** Clean TypeScript compilation with complete argument logging.
+
+---
+
+## 41 · Message Conversion & Stream Error Trace Diagnostic Logging
+**Date:** 2026-08-02
+
+**Problem:** `finishReason: error` with 0 tool calls and 0 text length occurred inside `streamText`. Without logging `convertToModelMessages` output and expanded error properties, it was impossible to see if message history conversion produced malformed roles or mismatched tool call/result pairs.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/api/chat/route.ts` | Extracted `convertedMessages = await convertToModelMessages(contextMessages)` before calling `streamText`. Added `console.log` for context message roles, converted message counts, and full JSON structure of converted messages. |
+| `src/app/api/chat/route.ts` | Expanded `onError` handler in `streamText` to stringify all non-enumerable error properties (`JSON.stringify(error, Object.getOwnPropertyNames(error), 2)`). |
+
+**Result:** Terminal output now logs the exact converted message history structure before sending to Gemini, and captures full un-truncated error payloads on stream failures.
+
+---
+
+## 42 · TypeScript Type Fix for `UIMessagePart.toolInvocation` in `chat/page.tsx`
+**Date:** 2026-08-02
+
+**Problem:** TypeScript error in `chat/page.tsx`: `Property 'toolInvocation' does not exist on type 'UIMessagePart<UIDataTypes, UITools>'. Property 'toolInvocation' does not exist on type 'TextUIPart'`.
+
+**Root cause:** `UIMessagePart` is a discriminated union. Members like `TextUIPart` do not define a `toolInvocation` property, so accessing `part.toolInvocation` directly triggered a strict type checking error.
+
+**What changed:**
+| File | Change |
+|------|--------|
+| `src/app/chat/page.tsx` | Updated `getToolFallbackSummary()` to cast `const p = part as any;` before evaluating `p.toolInvocation || p`. |
+
+**Result:** Clean TypeScript compilation with type-safe fallback summary rendering.
+
+
+
+
+
+
+
+
+
+

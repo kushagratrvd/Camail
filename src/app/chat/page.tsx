@@ -291,12 +291,51 @@ export default function ChatPage() {
           ) : (
             <div className="w-full max-w-3xl mx-auto space-y-6">
               {messages.map((message, index) => {
-                const msg = message as UIMessage & { content?: unknown };
+                const msg = message as UIMessage & { content?: unknown; parts?: any[] };
                 
                 // Determine if there is any visible text
                 const hasText = msg.parts 
                   ? msg.parts.some(p => p.type === 'text' && typeof p.text === 'string' && p.text.trim())
                   : (typeof msg.content === 'string' && msg.content.trim());
+
+                // Fallback tool summary if model outputted tool call without text
+                const getToolFallbackSummary = () => {
+                  if (!msg.parts) return null;
+                  const toolParts = msg.parts.filter((p: any) => p.type === 'tool-invocation' || p.toolInvocation);
+                  if (toolParts.length === 0) return null;
+
+                  for (const part of toolParts) {
+                    const p = part as any;
+                    const inv = p.toolInvocation || p;
+                    const name = inv.toolName || inv.name;
+                    const res = inv.result;
+
+                    if (name === 'send_email') {
+                      if (res?.sent !== undefined) return `✓ Successfully sent email to ${res.sent} recipient${res.sent > 1 ? 's' : ''}${res.failed ? ` (${res.failed} failed)` : ''}`;
+                      if (res?.success) return '✓ Email sent successfully';
+                      if (res?.error) return `❌ ${res.error}`;
+                      return '✓ Email operation executed';
+                    }
+                    if (name === 'reply_to_message') {
+                      if (res?.success) return '✓ Reply sent successfully';
+                      if (res?.error) return `❌ ${res.error}`;
+                      return '✓ Reply operation executed';
+                    }
+                    if (name === 'create_draft') {
+                      if (res?.success) return '✓ Draft created successfully';
+                      if (res?.error) return `❌ ${res.error}`;
+                      return '✓ Draft operation executed';
+                    }
+                    if (name === 'run_script') {
+                      if (res?.error) return `❌ ${res.error}`;
+                      return '✓ Operation completed successfully';
+                    }
+                  }
+
+                  return '✓ Operation completed';
+                };
+
+                const toolSummary = getToolFallbackSummary();
                 
                 const isLastMessage = index === messages.length - 1;
                 const isAssistantRunningTools = 
@@ -305,7 +344,7 @@ export default function ChatPage() {
                   msg.role === 'assistant' && 
                   !hasText;
 
-                if (msg.role === 'assistant' && !hasText && !isAssistantRunningTools) {
+                if (msg.role === 'assistant' && !hasText && !isAssistantRunningTools && !toolSummary) {
                   return null;
                 }
 
@@ -321,24 +360,30 @@ export default function ChatPage() {
                           <Loader2 className="w-3.5 h-3.5 animate-spin text-zinc-400 dark:text-zinc-500" />
                           <span>Running operations...</span>
                         </div>
-                      ) : msg.parts ? (
-                        msg.parts.map((part, i) => {
-                          switch (part.type) {
-                            case 'text':
-                              return (
-                                <div key={`${msg.id}-${i}`} className="break-words text-sm leading-relaxed">
-                                  <MarkdownRenderer content={typeof part.text === 'string' ? part.text : JSON.stringify(part)} />
-                                </div>
-                              );
-                            default:
-                              return null; // Hide all internal tool-invocation details
-                          }
-                        })
-                      ) : (
-                        <div className="break-words text-sm leading-relaxed font-light">
-                          <MarkdownRenderer content={typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)} />
+                      ) : hasText ? (
+                        msg.parts ? (
+                          msg.parts.map((part, i) => {
+                            switch (part.type) {
+                              case 'text':
+                                return (
+                                  <div key={`${msg.id}-${i}`} className="break-words text-sm leading-relaxed">
+                                    <MarkdownRenderer content={typeof part.text === 'string' ? part.text : JSON.stringify(part)} />
+                                  </div>
+                                );
+                              default:
+                                return null; // Hide all internal tool-invocation details
+                            }
+                          })
+                        ) : (
+                          <div className="break-words text-sm leading-relaxed font-light">
+                            <MarkdownRenderer content={typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)} />
+                          </div>
+                        )
+                      ) : toolSummary ? (
+                        <div className="flex items-center gap-2 text-xs font-semibold text-emerald-600 dark:text-emerald-400 py-0.5">
+                          <span>{toolSummary}</span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 );

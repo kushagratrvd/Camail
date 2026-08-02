@@ -15,7 +15,7 @@ import { eq } from 'drizzle-orm';
 import { ChatRequestSchema } from '@/server/lib/schemas';
 import { getDecryptedKeys } from '@/server/services/api-keys';
 import { buildSystemPrompt } from '@/server/lib/prompt-builder';
-import { sendEmail, replyToMessage, createDraft } from '@/server/lib/gmail-helpers';
+import { sendEmail, sendEmailWithToken, getGmailAccessToken, replyToMessage, createDraft } from '@/server/lib/gmail-helpers';
 
 function getModelInstance(
   modelString: string,
@@ -171,14 +171,35 @@ export async function POST(req: Request) {
     const gmailAcc = userAccounts.find((a) => integrationMap.get(a.integrationId) === 'gmail');
     const calAcc = userAccounts.find((a) => integrationMap.get(a.integrationId) === 'googlecalendar');
 
+    // Auto-backfill accountEmail if missing in DB for Gmail account
+    if (gmailAcc && !gmailAcc.accountEmail) {
+      const fallbackEmail = session?.user?.email ?? null;
+      if (fallbackEmail) {
+        gmailAcc.accountEmail = fallbackEmail;
+        db.update(corsairAccounts)
+          .set({ accountEmail: fallbackEmail, updatedAt: new Date() })
+          .where(eq(corsairAccounts.id, gmailAcc.id))
+          .catch((e) => console.warn('[Chat API] Failed to auto-backfill accountEmail:', e));
+      }
+    }
+
     const gmailStatus = gmailAcc?.status || 'DISCONNECTED';
     const calStatus = calAcc?.status || 'DISCONNECTED';
 
     // Extract last user message text for conditional prompt section injection
     const lastUserText = (() => {
-      const c = (lastUserMessage as any)?.content;
-      if (typeof c === 'string') return c;
-      if (Array.isArray(c)) return c.map((p: any) => p?.text ?? '').join(' ');
+      if (!lastUserMessage) return '';
+      const msg = lastUserMessage as any;
+      // Try parts first (Vercel AI SDK UIMessage format)
+      if (Array.isArray(msg.parts)) {
+        return msg.parts
+          .filter((p: any) => p.type === 'text')
+          .map((p: any) => p.text ?? '')
+          .join(' ');
+      }
+      // Fallback to content string / array
+      if (typeof msg.content === 'string') return msg.content;
+      if (Array.isArray(msg.content)) return msg.content.map((p: any) => p?.text ?? '').join(' ');
       return '';
     })();
 
@@ -190,14 +211,73 @@ export async function POST(req: Request) {
       const fromHeader = `${userName} <${senderEmail}>`;
 
       aiTools['send_email'] = tool({
-        description: 'Compose and send an email. Pass to, subject, and body as plain text — MIME is handled automatically. No confirmation needed.',
+        description: `Send an email to one or more recipients.
+- When 'to' is an array, this sends ONE SEPARATE EMAIL to EACH address in a single tool call.
+- Sending to ["a@x.com", "a@x.com", "a@x.com"] sends 3 separate emails to the same person.
+- You can send 30, 50, 100 emails in ONE call by passing all addresses in the array.
+- Use this for bulk sending: pass all 30, 50, or 100 addresses in a single call.
+- This is a single tool call regardless of how many recipients are in the array.`,
         inputSchema: z.object({
-          to: z.string().describe('Recipient email address'),
+          to: z.union([z.string(), z.array(z.string())]).describe('Recipient email address or array of recipient email addresses'),
           subject: z.string().describe('Email subject line'),
           body: z.string().describe('Plain text email body'),
         }),
         execute: async ({ to, subject, body }) => {
-          return sendEmail({ tenantId, from: fromHeader, to, subject, body });
+          try {
+            const recipients = Array.isArray(to) ? to : [to];
+            console.log(`[send_email] Attempting to send email to ${recipients.length} recipient(s):`, recipients);
+
+            let accessToken: string;
+            try {
+              accessToken = await getGmailAccessToken(tenantId);
+              console.log(`[send_email] Got access token — length: ${accessToken.length}`);
+            } catch (tokenErr) {
+              const tokenMsg = tokenErr instanceof Error ? tokenErr.message : String(tokenErr);
+              console.error('[send_email] Token fetch failed:', tokenMsg);
+              return { success: false, error: `Auth error: ${tokenMsg}` };
+            }
+
+            const results = await Promise.allSettled(
+              recipients.map((recipient) =>
+                sendEmailWithToken({ accessToken, from: fromHeader, to: recipient, subject, body })
+              )
+            );
+
+            const sent = results.filter((r) => r.status === 'fulfilled').length;
+            const failed = results.filter((r) => r.status === 'rejected') as PromiseRejectedResult[];
+
+            failed.forEach((f, i) => {
+              const reasonMsg = f.reason instanceof Error ? f.reason.message : String(f.reason);
+              console.error(`[send_email] Recipient #${i + 1} failed:`, reasonMsg);
+            });
+
+            console.log(`[send_email] Bulk send completed — total: ${recipients.length}, sent: ${sent}, failed: ${failed.length}`);
+
+            if (recipients.length === 1) {
+              if (results[0]?.status === 'fulfilled') {
+                return { success: true };
+              } else {
+                const reason = (results[0] as PromiseRejectedResult).reason;
+                const msg = reason instanceof Error ? reason.message : String(reason);
+                console.error('[send_email] Single send failed:', msg);
+                return { success: false, error: msg };
+              }
+            }
+
+            const firstFailedReason = failed[0]?.reason instanceof Error ? failed[0].reason.message : String(failed[0]?.reason ?? '');
+
+            return {
+              success: failed.length === 0,
+              sent,
+              failed: failed.length,
+              total: recipients.length,
+              ...(failed.length > 0 ? { error: `Failed to send to ${failed.length}/${recipients.length} recipients. First error: ${firstFailedReason}` } : {}),
+            };
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[send_email] Unexpected error:', msg);
+            return { success: false, error: msg };
+          }
         },
       });
 
@@ -208,7 +288,13 @@ export async function POST(req: Request) {
           body: z.string().describe('Plain text reply body'),
         }),
         execute: async ({ originalMessageId, body }) => {
-          return replyToMessage({ tenantId, from: fromHeader, originalMessageId, body });
+          try {
+            return await replyToMessage({ tenantId, from: fromHeader, originalMessageId, body });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[reply_to_message Error]', msg);
+            return { success: false, error: msg };
+          }
         },
       });
 
@@ -220,7 +306,13 @@ export async function POST(req: Request) {
           body: z.string().describe('Plain text email body'),
         }),
         execute: async ({ to, subject, body }) => {
-          return createDraft({ tenantId, from: fromHeader, to, subject, body });
+          try {
+            return await createDraft({ tenantId, from: fromHeader, to, subject, body });
+          } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error('[create_draft Error]', msg);
+            return { success: false, error: msg };
+          }
         },
       });
     }
@@ -236,15 +328,37 @@ export async function POST(req: Request) {
       lastMessage: lastUserText,
     });
 
+    console.log('[Chat API] Context messages count:', contextMessages.length);
+    console.log('[Chat API] Context messages roles:', contextMessages.map((m: any) => m.role));
+
+    let convertedMessages;
+    try {
+      convertedMessages = await convertToModelMessages(contextMessages);
+      console.log('[Chat API] Converted messages count:', convertedMessages.length);
+      console.log('[Chat API] Converted messages:', JSON.stringify(convertedMessages, null, 2));
+    } catch (err) {
+      console.error('[Chat API] convertToModelMessages failed:', err);
+      throw err;
+    }
+
     const result = streamText({
       model: modelInstance,
-      messages: await convertToModelMessages(contextMessages),
+      messages: convertedMessages,
       tools: aiTools,
       system: systemPrompt,
       stopWhen: stepCountIs(5),
       maxRetries: 0,
+      onStepFinish: ({ toolCalls, toolResults, text, finishReason }) => {
+        console.log(`[streamText Step] finishReason: ${finishReason}, toolCalls: ${toolCalls?.length ?? 0}, toolResults: ${toolResults?.length ?? 0}, textLength: ${text?.length ?? 0}`);
+        if (toolCalls && toolCalls.length > 0) {
+          toolCalls.forEach((tc: any) => console.log(`[streamText ToolCall] Name: ${tc.toolName}, Args:`, JSON.stringify(tc.input ?? tc.args)));
+        }
+        if (toolResults && toolResults.length > 0) {
+          toolResults.forEach((tr: any) => console.log(`[streamText ToolResult] Name: ${tr.toolName}, Result:`, JSON.stringify(tr.result)));
+        }
+      },
       onError: ({ error }) => {
-        console.error('[Stream Execution Error]', error);
+        console.error('[Stream Execution Error] Full error:', JSON.stringify(error, Object.getOwnPropertyNames(error), 2));
       },
     });
 
