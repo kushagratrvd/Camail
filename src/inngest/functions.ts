@@ -147,7 +147,7 @@ export async function processIntegrationConnected(tenantId: string, plugin: stri
   try {
     const tenant = corsair.withTenant(tenantId);
     if (plugin === 'gmail' && tenant.gmail) {
-      const listRes = await tenant.gmail.api.messages.list({ maxResults: 50 }).catch(() => null);
+      const listRes = await tenant.gmail.api.messages.list({ maxResults: 20 }).catch(() => null);
       if (listRes?.messages) {
         await Promise.all(
           listRes.messages.map((m) => (m.id ? tenant.gmail!.api.messages.get({ id: m.id, format: 'full' }).catch(() => null) : null))

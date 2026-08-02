@@ -97,16 +97,42 @@ export default function ChatPage() {
   
   const { messages, setMessages, sendMessage, status } = useChat({
     onError: (error: Error) => {
-      setChatError(error.message ?? 'Something went wrong. Please try again.');
+      console.error('[Chat Page Error]', error);
+      const raw = error.message || '';
+      if (raw.startsWith('⚠️') || raw.startsWith('❌')) {
+        setChatError(raw);
+      } else if (raw.includes('Quota Violation') || raw.includes('free tier limit')) {
+        setChatError('⚠️ Monthly free AI quota reached! Please configure your own API key in Settings to continue.');
+      } else if (
+        raw.includes('quota') ||
+        raw.includes('Quota') ||
+        raw.includes('RESOURCE_EXHAUSTED') ||
+        raw.includes('429') ||
+        raw.includes('rate-limit') ||
+        raw.includes('limit: 20') ||
+        raw.includes('exceeded your current quota')
+      ) {
+        setChatError('⚠️ API rate limit or quota exceeded for this model. Please wait a minute or configure your own API key in Settings.');
+      } else if (raw.includes('API Key') || raw.includes('apiKey') || raw.includes('Missing')) {
+        setChatError('⚠️ Missing or invalid API key. Please check your API keys in Settings.');
+      } else {
+        setChatError(
+          raw && raw !== 'An error occurred.'
+            ? raw
+            : '⚠️ API rate limit or key error. Please wait a minute or configure your own API key in Settings.'
+        );
+      }
     },
   });
 
-  const isLoading = status !== 'ready';
+  const isLoading = (status === 'submitted' || status === 'streaming') && !chatError;
 
   const { data: history, isSuccess, isFetching } = api.chat.getChatHistory.useQuery({ chatId: currentChatId || undefined }, {
     enabled: !!session && !!currentChatId,
-    refetchOnWindowFocus: false,
+    refetchOnWindowFocus: true,
+    staleTime: 30 * 1000, // 30 seconds cache for active chat messages
   });
+
 
   const { mutate: saveChat } = api.chat.saveChatHistory.useMutation();
   const historyLoaded = useRef(false);
@@ -279,6 +305,10 @@ export default function ChatPage() {
                   msg.role === 'assistant' && 
                   !hasText;
 
+                if (msg.role === 'assistant' && !hasText && !isAssistantRunningTools) {
+                  return null;
+                }
+
                 return (
                   <div key={msg.id || index} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                     <div className={`max-w-[85%] overflow-hidden ${
@@ -388,7 +418,7 @@ export default function ChatPage() {
                   return;
                 }
                 setChatError(null);
-                sendMessage({ text: chatInput }, { body: { model: selectedModel, instructions: customInstructions } });
+                sendMessage({ text: chatInput }, { body: { model: selectedModel, instructions: customInstructions, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone } });
                 setChatInput('');
               }}
             >

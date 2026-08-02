@@ -1,9 +1,10 @@
 import { z } from 'zod';
 
 export const ChatRequestSchema = z.object({
-  messages: z.array(z.unknown()), // We rely on Vercel AI SDK's UIMessage to type this internally, but we can ensure it's an array
+  messages: z.array(z.unknown()),
   model: z.string().optional().default('google/gemini-2.5-flash'),
   instructions: z.string().optional(),
+  timezone: z.string().optional().default('Asia/Kolkata'),
 });
 
 export const GoogleWebhookHeadersSchema = z.object({

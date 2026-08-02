@@ -161,15 +161,30 @@ export function validatePromptSafety(prompt: string): void {
 }
 
 export function validateRestrictedOperations(code: string): void {
-  const restrictedPatterns = [
+  const destructivePatterns = [
     /\.messages\.(?:delete|trash)\b/,
     /\.threads\.(?:delete|trash)\b/,
     /\.events\.delete\b/,
   ];
 
-  for (const pattern of restrictedPatterns) {
+  for (const pattern of destructivePatterns) {
     if (pattern.test(code)) {
       throw new Error("Safety Violation: Trashing or deleting emails and events is restricted by system safety policies.");
+    }
+  }
+
+  // Block sending/drafting via run_script — must use dedicated tools
+  const sendPatterns = [
+    /\.messages\.send\b/,
+    /\.drafts\.create\b/,
+    /\.drafts\.send\b/,
+  ];
+
+  for (const pattern of sendPatterns) {
+    if (pattern.test(code)) {
+      throw new Error(
+        "Safety Violation: Sending emails and creating drafts via run_script is blocked. Use the dedicated send_email, reply_to_message, or create_draft tools instead."
+      );
     }
   }
 }

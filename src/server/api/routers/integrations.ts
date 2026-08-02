@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "@/server/api/trpc";
 import { db } from "@/server/db";
-import { corsairAccounts, corsairEntities, corsairWebhooks, corsairIntegrations } from "@/server/db/schema";
+import { corsairAccounts, corsairEntities, corsairEvents, corsairWebhooks, corsairIntegrations } from "@/server/db/schema";
 import { and, eq } from "drizzle-orm";
 import { getTenantId } from "@/server/lib/tenant";
 import { createAccountKeyManager } from "corsair/core";
@@ -133,8 +133,9 @@ export const integrationsRouter = createTRPCRouter({
         });
 
         if (account) {
-          // 2. Wipe entities associated with this account
+          // 2. Wipe entities & events associated with this account
           await db.delete(corsairEntities).where(eq(corsairEntities.accountId, account.id));
+          await db.delete(corsairEvents).where(eq(corsairEvents.accountId, account.id));
 
           // Delete account row
           await db.delete(corsairAccounts).where(eq(corsairAccounts.id, account.id));

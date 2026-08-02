@@ -85,6 +85,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const { data: chats } = api.chat.getChats.useQuery(undefined, {
     enabled: !!session?.user?.id,
+    staleTime: 60 * 1000, // 1 minute cache for sidebar chat list
+    refetchOnWindowFocus: true,
   });
 
 

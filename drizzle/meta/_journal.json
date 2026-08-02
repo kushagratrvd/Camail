@@ -36,6 +36,13 @@
       "when": 1785541450649,
       "tag": "0004_lumpy_flatman",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1785624623036,
+      "tag": "0005_vengeful_demogoblin",
+      "breakpoints": true
     }
   ]
 }

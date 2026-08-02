@@ -43,6 +43,8 @@ function UserAvatar({ sender, className }: { sender: string | null; className?: 
 export function GmailPanel() {
   const [search, setSearch] = useState("");
   const [activeSearch, setActiveSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
   const [view, setView] = useState<"inbox" | "drafts">("inbox");
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -54,7 +56,7 @@ export function GmailPanel() {
   const utils = api.useUtils();
 
   const emails = api.gmail.searchEmails.useQuery(
-    { query: activeSearch, limit: 50, offset: 0 },
+    { query: activeSearch, limit: PAGE_SIZE, offset: (page - 1) * PAGE_SIZE },
     { enabled: view === "inbox" },
   );
 
@@ -104,7 +106,11 @@ export function GmailPanel() {
 
 
 
-  const { data: statusData } = api.integrations.getStatus.useQuery();
+  const { data: statusData } = api.integrations.getStatus.useQuery(undefined, {
+    staleTime: 10_000,
+    refetchInterval: (query: { state: { data?: { gmail?: { status: string } } } }) =>
+      query.state.data?.gmail?.status === "SYNCING" ? 3000 : false,
+  });
   const gmailStatus = statusData?.gmail?.status;
 
   if (gmailStatus === "DISCONNECTED") {
@@ -132,7 +138,7 @@ export function GmailPanel() {
       {gmailStatus === "SYNCING" && (
         <div className="p-4 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800/50 rounded-2xl text-xs flex items-center gap-2">
           <Loader2 className="w-4 h-4 animate-spin text-blue-500" />
-          <span>Initial email sync in progress... Your inbox will automatically populate in a few moments.</span>
+          <span>Gmail Connected {statusData?.gmail?.accountEmail ? `(${statusData.gmail.accountEmail})` : ''} • Syncing emails in the background... Your inbox will automatically update in a few moments.</span>
         </div>
       )}
       {gmailStatus === "RECONNECT_REQUIRED" && (
@@ -207,6 +213,7 @@ export function GmailPanel() {
             <form
               onSubmit={(e) => {
                 e.preventDefault();
+                setPage(1);
                 setActiveSearch(search);
               }}
               className="relative flex items-center gap-2"
@@ -305,6 +312,32 @@ export function GmailPanel() {
                       );
                     })
                   )}
+                </div>
+              )}
+              {emails.data && emails.data.length > 0 && (
+                <div className="flex items-center justify-between pt-3 border-t border-zinc-200/60 dark:border-zinc-800/60 text-xs text-zinc-500">
+                  <span className="font-medium">
+                    Showing {(page - 1) * PAGE_SIZE + 1}–{(page - 1) * PAGE_SIZE + emails.data.length}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors font-semibold cursor-pointer text-xs"
+                    >
+                      Previous
+                    </button>
+                    <span className="px-2 font-bold text-zinc-700 dark:text-zinc-300">
+                      Page {page}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => p + 1)}
+                      disabled={emails.data.length < PAGE_SIZE}
+                      className="px-3 py-1.5 rounded-xl border border-zinc-200 dark:border-zinc-800 disabled:opacity-40 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors font-semibold cursor-pointer text-xs"
+                    >
+                      Next
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

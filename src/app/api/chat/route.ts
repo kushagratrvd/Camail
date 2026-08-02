@@ -14,6 +14,8 @@ import { corsairChats, corsairAccounts, corsairIntegrations } from '@/server/db/
 import { eq } from 'drizzle-orm';
 import { ChatRequestSchema } from '@/server/lib/schemas';
 import { getDecryptedKeys } from '@/server/services/api-keys';
+import { buildSystemPrompt } from '@/server/lib/prompt-builder';
+import { sendEmail, replyToMessage, createDraft } from '@/server/lib/gmail-helpers';
 
 function getModelInstance(
   modelString: string,
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
     return new Response(JSON.stringify(parsed.error), { status: 400, headers: { 'Content-Type': 'application/json' } });
   }
 
-  const { messages, model, instructions } = parsed.data;
+  const { messages, model, instructions, timezone } = parsed.data;
 
   const session = await auth.api.getSession({
     headers: await headers(),
@@ -121,7 +123,18 @@ export async function POST(req: Request) {
           }
         }
         const finalArgs = { ...args, tenantId };
-        return await t.handler(finalArgs as Parameters<typeof t.handler>[0]);
+        try {
+          const res = (await t.handler(finalArgs as Parameters<typeof t.handler>[0])) as Record<string, unknown>;
+          if (res && typeof res === 'object' && res.error) {
+            console.error(`[Corsair Tool Error ${t.name}]`, res.error);
+            return { success: false, error: String(res.error) };
+          }
+          return res;
+        } catch (err: unknown) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          console.error(`[Corsair Tool Exception ${t.name}]`, errMsg);
+          return { success: false, error: errMsg };
+        }
       }
     });
   }
@@ -161,70 +174,78 @@ export async function POST(req: Request) {
     const gmailStatus = gmailAcc?.status || 'DISCONNECTED';
     const calStatus = calAcc?.status || 'DISCONNECTED';
 
+    // Extract last user message text for conditional prompt section injection
+    const lastUserText = (() => {
+      const c = (lastUserMessage as any)?.content;
+      if (typeof c === 'string') return c;
+      if (Array.isArray(c)) return c.map((p: any) => p?.text ?? '').join(' ');
+      return '';
+    })();
+
+    // Register dedicated send/reply tools so the LLM never touches MIME or base64
+    const gmailConnected = gmailStatus === 'CONNECTED' || gmailStatus === 'SYNCING';
+    const senderEmail = gmailAcc?.accountEmail || session?.user?.email || null;
+    console.log(`[Chat API] Gmail status: ${gmailStatus}, accountEmail: ${gmailAcc?.accountEmail ?? 'none'}, sessionEmail: ${session?.user?.email ?? 'none'}, senderEmail: ${senderEmail ?? 'none'}, tools registered: ${gmailConnected && !!senderEmail}`);
+    if (gmailConnected && senderEmail) {
+      const fromHeader = `${userName} <${senderEmail}>`;
+
+      aiTools['send_email'] = tool({
+        description: 'Compose and send an email. Pass to, subject, and body as plain text — MIME is handled automatically. No confirmation needed.',
+        inputSchema: z.object({
+          to: z.string().describe('Recipient email address'),
+          subject: z.string().describe('Email subject line'),
+          body: z.string().describe('Plain text email body'),
+        }),
+        execute: async ({ to, subject, body }) => {
+          return sendEmail({ tenantId, from: fromHeader, to, subject, body });
+        },
+      });
+
+      aiTools['reply_to_message'] = tool({
+        description: 'Reply to an existing email thread. Thread headers (In-Reply-To, References, threadId) are handled automatically.',
+        inputSchema: z.object({
+          originalMessageId: z.string().describe('The Gmail message ID to reply to'),
+          body: z.string().describe('Plain text reply body'),
+        }),
+        execute: async ({ originalMessageId, body }) => {
+          return replyToMessage({ tenantId, from: fromHeader, originalMessageId, body });
+        },
+      });
+
+      aiTools['create_draft'] = tool({
+        description: 'Create a draft email without sending it. Pass to, subject, and body as plain text.',
+        inputSchema: z.object({
+          to: z.string().describe('Recipient email address'),
+          subject: z.string().describe('Email subject line'),
+          body: z.string().describe('Plain text email body'),
+        }),
+        execute: async ({ to, subject, body }) => {
+          return createDraft({ tenantId, from: fromHeader, to, subject, body });
+        },
+      });
+    }
+
+    const systemPrompt = buildSystemPrompt({
+      userName,
+      timezone: timezone || 'Asia/Kolkata',
+      gmailStatus,
+      gmailEmail: senderEmail,
+      calStatus,
+      calEmail: calAcc?.accountEmail ?? null,
+      instructions,
+      lastMessage: lastUserText,
+    });
+
     const result = streamText({
       model: modelInstance,
       messages: await convertToModelMessages(contextMessages),
       tools: aiTools,
-      system: `You are a helpful AI assistant connected to the user's Gmail and Google Calendar via Corsair.
-You can read emails, send emails, create calendar events, and more.
-
-TOPIC CONSTRAINT:
-- You must ONLY answer questions or perform tasks related to Google Calendar, Gmail, and managing email/calendar workflows.
-- If the user asks general knowledge questions, programming questions, or any other topic unrelated to Gmail, Google Calendar, or Corsair, politely refuse to answer, stating that you are an assistant dedicated to managing their emails and calendar.
-
-CONNECTED INTEGRATIONS STATUS:
-- Gmail: ${gmailStatus}${gmailAcc?.accountEmail ? ` (${gmailAcc.accountEmail})` : ''}
-- Google Calendar: ${calStatus}${calAcc?.accountEmail ? ` (${calAcc.accountEmail})` : ''}
-
-INTEGRATION GUARDRAILS:
-- If the user asks an email question and Gmail status is DISCONNECTED, politely inform them that Gmail is not connected and direct them to connect it in Settings.
-- If Gmail status is SYNCING, inform them that their inbox is currently setting up and to try again in a few moments.
-- If Gmail status is RECONNECT_REQUIRED, inform them that their Gmail session expired and to reconnect in Settings.
-- Same rules apply for Google Calendar questions if Calendar status is not CONNECTED.
-
-USER CONTEXT:
-- The user's name is ${userName}. When writing emails on their behalf, ALWAYS sign off with their actual name (${userName}), not placeholders like "[your name]".
-- The current exact date and time is ${new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' })}.
-- The current year is ${new Date().getFullYear()}. When scheduling events for "tomorrow" or "next week", use this year unless specified otherwise.
-
-${instructions ? `USER-DEFINED INSTRUCTIONS / TEMPLATES:
-${instructions}
-
-` : ''}IMPORTANT RULES:
-- Your integrations are already configured. No setup is needed.
-- Available Gmail operations: messages.list, messages.get, messages.send, messages.delete, messages.modify, messages.batchModify, messages.trash, messages.untrash, labels.list, labels.get, labels.create, labels.update, labels.delete, drafts.list, drafts.get, drafts.create, drafts.update, drafts.delete, drafts.send, threads.list, threads.get, threads.modify, threads.delete, threads.trash, threads.untrash.
-- Available Calendar operations: events.create, events.get, events.getMany, events.update, events.delete, calendar.getAvailability.
-- Assume UTC+5:30 (Asia/Kolkata) as default unless specified by the user. Always add the proper timezone indicator to any dates/times you generate for calendar events.
-- Use 'run_script' to execute operations.
-- CRITICAL FOR RUN_SCRIPT: If you want to read or fetch data, your script MUST explicitly use the \`return\` keyword at the top level (e.g. \`return await corsair.gmail.api...\`). Otherwise, it will return null!
-- CRITICAL FOR RUN_SCRIPT WRAPPING: DO NOT wrap your script in an outer async function definition (e.g. \`async () => { ... }\` or \`async function() { ... }\`). Write your code directly as flat, top-level statements. Your script is already executed inside an async IIFE wrapper. If you wrap it, it will return the function definition object instead of executing it, resulting in a 'null' or empty output!
-- CRITICAL FOR READING EMAIL BODIES: The Gmail API returns the email body as a base64url encoded string nested inside \`payload.body.data\` or \`payload.parts\`. In your scripts, you MUST decode it using a helper function and strip any raw HTML/CSS tags to get clean plain text. Example:
-  \`const decode = (data) => Buffer.from(data, 'base64').toString('utf8');
-  const cleanHtml = (html) => html.replace(/<style[\\s\\S]*?<\\/style>/gi, '').replace(/<script[\\s\\S]*?<\\/script>/gi, '').replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' ').trim();
-  function extractBody(part) {
-    if (part.mimeType === 'text/plain' && part.body?.data) return decode(part.body.data);
-    if (part.parts) {
-      for (const p of part.parts) {
-        const body = extractBody(p);
-        if (body) return body;
-      }
-    }
-    if (part.mimeType === 'text/html' && part.body?.data) return cleanHtml(decode(part.body.data));
-    return "";
-  }
-  const msg = await corsair.gmail.api.messages.get({ id: 'MSG_ID', format: 'full' });
-  const rawBody = extractBody(msg.payload) || decode(msg.payload.body?.data || "") || msg.snippet || "";
-  return typeof rawBody === 'string' && rawBody.includes('<') ? cleanHtml(rawBody) : rawBody;\`
-  Always write and use this decoding and cleaning logic when retrieving email contents to read the complete email body instead of raw HTML or just the snippet.
-- CLEAN EMAIL OUTPUT & FORMATTING: When presenting email details or summaries to the user, ALWAYS strip out any raw HTML tags, doctypes (e.g. <!DOCTYPE html>), and CSS markup. Output clean, readable plain text.
-- Use Markdown formatting for your responses: bold key field labels (e.g. **Subject:**, **From:**, **Body:**), use numbered or bulleted lists for multiple emails, and organize information clearly.
-- To list or fetch calendar events, you MUST use \`events.getMany\` (NOT events.list). Example: \`return await corsair.googlecalendar.api.events.getMany({ calendarId: 'primary', timeMin: new Date().toISOString() })\`
-- For sending emails, Corsair's schema expects \`raw\` at the root level (NOT inside resource or requestBody). Example: \`corsair.gmail.api.messages.send({ userId: 'me', raw: Buffer.from(emailContent).toString('base64url') })\`
-- For creating events, Corsair's schema expects the payload in \`event\`. Example: \`corsair.googlecalendar.api.events.create({ calendarId: 'primary', event: { summary: '...', start: { dateTime: '...' }, end: { dateTime: '...' } } })\`
-- The run_script tool often returns "null" for write operations (e.g. sending an email). This is normal behavior — assume success for write operations (send, create, delete, modify) if they return null.
-- NEVER retry the same tool call more than once. If a tool returns "null" or an unexpected result, inform the user and move on.
-- Keep your responses concise, well-formatted, and friendly.`,
+      system: systemPrompt,
       stopWhen: stepCountIs(5),
+      maxRetries: 0,
+      onError: ({ error }) => {
+        console.error('[Stream Execution Error]', error);
+      },
     });
 
     return result.toUIMessageStreamResponse();
@@ -232,28 +253,44 @@ ${instructions}
     console.error('[Chat API Error]', error);
 
     const e = error as Record<string, unknown>;
-    const errorMessage = typeof e?.message === 'string' ? e.message : '';
+    const errorMessage = typeof e?.message === 'string' ? e.message : String(error);
     const lastError = e?.lastError as Record<string, unknown> | undefined;
 
     const isSafetyError = errorMessage.includes('Safety Violation');
     const isQuotaViolation = errorMessage.includes('Quota Violation');
+    const isMissingKey = errorMessage.includes('Missing') && errorMessage.includes('API Key');
+    const isInvalidKey = errorMessage.includes('invalid_api_key') || errorMessage.includes('API key not valid') || errorMessage.includes('Incorrect API key');
     const isQuotaError = isQuotaViolation
       || e?.statusCode === 429
       || lastError?.statusCode === 429
       || errorMessage.includes('quota')
-      || errorMessage.includes('RESOURCE_EXHAUSTED');
+      || errorMessage.includes('Quota')
+      || errorMessage.includes('RESOURCE_EXHAUSTED')
+      || errorMessage.includes('rate-limit')
+      || errorMessage.includes('rate_limit');
 
-    const message = isSafetyError
-      ? `⚠️ ${errorMessage}`
-      : isQuotaViolation
-        ? `⚠️ ${errorMessage}`
-        : isQuotaError
-          ? '⚠️ API rate limit exceeded. Please wait a minute and try again.'
-          : '❌ Something went wrong. Please try again.';
+    let message: string;
+    let status = 500;
 
-    return new Response(
-      message,
-      { status: isSafetyError || isQuotaViolation ? 400 : (isQuotaError ? 429 : 500), headers: { 'Content-Type': 'text/plain' } }
-    );
+    if (isSafetyError) {
+      message = `⚠️ ${errorMessage}`;
+      status = 400;
+    } else if (isQuotaViolation) {
+      message = `⚠️ ${errorMessage}`;
+      status = 429;
+    } else if (isMissingKey || isInvalidKey) {
+      message = `⚠️ API Key Error: ${errorMessage}. Please configure your API key in Settings.`;
+      status = 401;
+    } else if (isQuotaError) {
+      message = `⚠️ API rate limit or quota exceeded for ${model}. Please wait a minute or configure your own API key in Settings.`;
+      status = 429;
+    } else {
+      message = `❌ ${errorMessage || 'Something went wrong. Please try again.'}`;
+    }
+
+    return new Response(message, {
+      status,
+      headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+    });
   }
 }

@@ -109,7 +109,11 @@ export function CalendarPanel() {
     return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
   };
 
-  const { data: statusData } = api.integrations.getStatus.useQuery();
+  const { data: statusData } = api.integrations.getStatus.useQuery(undefined, {
+    staleTime: 10_000,
+    refetchInterval: (query: { state: { data?: { calendar?: { status: string } } } }) =>
+      query.state.data?.calendar?.status === "SYNCING" ? 3000 : false,
+  });
   const calStatus = statusData?.calendar?.status;
 
   if (calStatus === "DISCONNECTED") {
