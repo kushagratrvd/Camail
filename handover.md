@@ -55,7 +55,7 @@
 
 ## 📝 5-Line Session Summary
 
-- **Done**: Fully implemented Automations/Scheduler end-to-end, made `/automations` scrollable, and hardened `/activity` by stripping raw JSON payload from queries & UI.
+- **Done**: Fully implemented Automations/Scheduler end-to-end, made `/automations` scrollable, hardened `/activity` (removed raw payload), and secured `/docs` (removed internal API specs & openapi.json).
 - **In Progress**: Validated automation creation and manual execution flows.
 - **Next Up**: Observe manual and scheduled runs in Runs History tab, then commit changes to Git.
 - **Watch Out**: Inngest functions (`executeAutomation`, `pollDueAutomations`) are automatically served by Inngest Cloud via `/api/inngest`.

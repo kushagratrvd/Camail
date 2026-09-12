@@ -90,6 +90,13 @@
 - **Alternatives Considered**: Masking/sanitizing known sensitive keys in the JSON payload before client serialization.
 - **Reasoning**: Raw event payloads from Gmail/Calendar webhooks contain email snippets, message IDs, and attendee headers. Completely omitting the payload column server-side prevents accidental PII exposure during screen-shares and minimizes bandwidth, while still providing full audit visibility of execution events and status.
 
+### [2026-09-13] Decision: Remove Internal API Reference & `openapi.json` from Documentation
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Remove the "API Reference" interactive section and the downloadable `openapi.json` file from `/docs`. Restrict `/docs` to user onboarding, AI capabilities, privacy compliance, and FAQs.
+- **Alternatives Considered**: Keeping the API Reference but updating it to document server-side API keys.
+- **Reasoning**: Camail is a SaaS workspace application, not an open public developer platform. Exposing internal endpoints (`/api/chat`, `/api/connect`, `/api/webhooks`) and their parameter signatures publishes unnecessary attack surface, invites bot traffic to webhook endpoints, and documented an obsolete schema (passing plaintext keys in chat). Removing it streamlines user documentation and eliminates route information disclosure.
+
 ---
 
 ## 🗓️ Planned Future Improvements
