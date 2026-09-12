@@ -122,24 +122,47 @@ POST /api/webhooks  [src/app/api/webhooks/route.ts]
 
 ---
 
-## 6. Planned Automation / Scheduler Execution Flow
+## 6. Automations & Scheduler Execution Flow (Implemented)
 
 ```
-Inngest Cron Poller (Every 5 minutes)
+A. User Management Flow (/automations UI)
+   │
+   ├─► 1. "New Automation" / Template Click ──► CreateAutomationModal
+   │     ├─► Reads keyStatus from api.apiKeys.getKeyStatus
+   │     ├─► User selects model (Gemini, GPT-5.4, Claude Sonnet), schedule, timezone, prompt
+   │     └─► Submit ──► trpc.automations.create
+   │           ├─► Quota check: if user has >= 3 automations and no custom keys, throws FORBIDDEN
+   │           ├─► Computes initial nextRunAt via getNextRunTime(cron, timezone)
+   │           └─► Inserts into automations table
+   │
+   ├─► 2. "Run Now" Manual Trigger
+   │     └─► trpc.automations.runNow ──► inngest.send('automation.execute', { triggerType: 'manual' })
+   │
+   └─► 3. Inspect Run Details
+         └─► Click Run in Runs tab ──► trpc.automations.getRunById ──► RunDetailModal (MarkdownRenderer)
+
+B. Scheduled Background Polling Flow (Every 5 minutes)
    │
    ▼
-[src/inngest/functions.ts] pollDueAutomations
+[src/inngest/functions.ts] pollDueAutomations (cron: '*/5 * * * *')
    │
-   ├─► Query automations table: status='active' AND nextRunAt <= NOW()
-   └─► Dispatch "automation.execute" event per due automation
+   ├─► Step 1: Query automations table: status='active' AND nextRunAt <= NOW() (limit 50)
+   ├─► Step 2: For each due automation, advance nextRunAt immediately in DB (prevent double firing)
+   └─► Step 3: Dispatch Inngest batch events: 'automation.execute' { automationId, tenantId, triggerType: 'scheduled' }
          │
          ▼
-[src/inngest/functions.ts] executeAutomation
+[src/inngest/functions.ts] executeAutomation (concurrency: limit 2 per tenant)
    │
-   ├─► Create automation_runs record (status = 'running')
-   ├─► Call shared AI Service (src/server/services/automation-executor.ts)
-   │     ├─► Executes prompt using configured LLM & Corsair tools (non-streaming)
-   │     └─► Captures output content & execution duration
-   ├─► Update automation_runs (status='succeeded'/'failed', resultContent, durationMs)
-   └─► Update automations (lastRunAt = NOW(), nextRunAt = computeNextRun(cron, timezone))
+   ├─► Step 1: initialize-run ──► Insert automation_runs (status='running', startedAt=now())
+   ├─► Step 2: run-ai-pipeline ──► executeAutomationPrompt (src/server/services/automation-executor.ts)
+   │     ├─► 1. validatePromptSafety(prompt)
+   │     ├─► 2. getDecryptedKeys(tenantId) + enforceAiQuota(tenantId) if no custom key
+   │     ├─► 3. getModelInstance(automation.model, keys)
+   │     ├─► 4. corsair.withTenant(tenantId) + buildCorsairToolDefs + dedicated email tools
+   │     ├─► 5. generateText({ model, system, prompt, tools, stopWhen: stepCountIs(8) })
+   │     └─► 6. Returns { success, title, content (full markdown), durationMs, modelUsed }
+   │
+   └─► Step 3: finalize-run-and-schedule
+         ├─► Update automation_runs (status='succeeded'/'failed', resultTitle, resultContent, durationMs, error)
+         └─► Update automations (lastRunAt=now(), nextRunAt=getNextRunTime(schedule, timezone))
 ```

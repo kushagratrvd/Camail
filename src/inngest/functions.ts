@@ -2,11 +2,13 @@ import { inngest } from './client';
 import { corsair } from '@/server/corsair';
 import { processWebhook } from 'corsair';
 import { db, conn } from '@/server/db';
-import { corsairAccounts, corsairIntegrations, corsairWebhooks } from '@/server/db/schema';
-import { and, eq, or, lt } from 'drizzle-orm';
+import { corsairAccounts, corsairIntegrations, corsairWebhooks, automations, automationRuns } from '@/server/db/schema';
+import { and, eq, or, lt, lte } from 'drizzle-orm';
 import { registerGmailWebhook, registerGoogleCalendarWebhook } from '@/server/lib/webhooks';
 import { createAccountKeyManager } from 'corsair/core';
 import { createCorsairDatabase } from 'corsair/db';
+import { executeAutomationPrompt } from '@/server/services/automation-executor';
+import { getNextRunTime } from '@/server/lib/cron-utils';
 
 export const syncGmailWebhook = inngest.createFunction(
   {
@@ -281,3 +283,144 @@ export const renewExpiringWebhooks = inngest.createFunction(
     return { renewed };
   }
 );
+
+export const executeAutomation = inngest.createFunction(
+  {
+    id: 'execute-automation',
+    name: 'Execute Automation',
+    concurrency: {
+      limit: 2,
+      key: 'event.data.tenantId',
+    },
+    triggers: [{ event: 'automation.execute' }],
+  },
+  async ({ event, step }) => {
+    const { automationId, tenantId, triggerType } = event.data as {
+      automationId: string;
+      tenantId: string;
+      triggerType?: string;
+    };
+
+    // Step 1: Query automation and initialize run record
+    const runInfo = await step.run('initialize-run', async () => {
+      const item = await db.query.automations.findFirst({
+        where: and(eq(automations.id, automationId), eq(automations.tenantId, tenantId)),
+      });
+      if (!item) {
+        throw new Error(`Automation ${automationId} not found for tenant ${tenantId}`);
+      }
+
+      const runId = crypto.randomUUID();
+      await db.insert(automationRuns).values({
+        id: runId,
+        automationId,
+        tenantId,
+        status: 'running',
+        modelUsed: item.model,
+        startedAt: new Date(),
+      });
+
+      return {
+        runId,
+        name: item.name,
+        prompt: item.prompt,
+        model: item.model,
+        schedule: item.schedule,
+        timezone: item.timezone,
+      };
+    });
+
+    // Step 2: Execute AI prompt and tool pipelines
+    const aiResult = await step.run('run-ai-pipeline', async () => {
+      return await executeAutomationPrompt({
+        tenantId,
+        automationName: runInfo.name,
+        prompt: runInfo.prompt,
+        model: runInfo.model,
+        timezone: runInfo.timezone,
+      });
+    });
+
+    // Step 3: Update run record and calculate next schedule
+    await step.run('finalize-run-and-schedule', async () => {
+      await db
+        .update(automationRuns)
+        .set({
+          status: aiResult.success ? 'succeeded' : 'failed',
+          resultTitle: aiResult.title,
+          resultContent: aiResult.content,
+          modelUsed: aiResult.modelUsed,
+          durationMs: aiResult.durationMs,
+          error: aiResult.error ?? null,
+          completedAt: new Date(),
+        })
+        .where(eq(automationRuns.id, runInfo.runId));
+
+      const nextRunAt = getNextRunTime(runInfo.schedule, runInfo.timezone);
+
+      await db
+        .update(automations)
+        .set({
+          lastRunAt: new Date(),
+          nextRunAt,
+          updatedAt: new Date(),
+        })
+        .where(eq(automations.id, automationId));
+    });
+
+    return {
+      success: aiResult.success,
+      runId: runInfo.runId,
+      durationMs: aiResult.durationMs,
+    };
+  }
+);
+
+export const pollDueAutomations = inngest.createFunction(
+  {
+    id: 'poll-due-automations',
+    name: 'Poll Due Automations',
+    triggers: [{ cron: '*/5 * * * *' }], // Runs every 5 minutes
+  },
+  async ({ step }) => {
+    const dueAutomations = await step.run('query-due-automations', async () => {
+      const now = new Date();
+      return await db.query.automations.findMany({
+        where: and(
+          eq(automations.status, 'active'),
+          lte(automations.nextRunAt, now)
+        ),
+        limit: 50,
+      });
+    });
+
+    if (!dueAutomations.length) {
+      return { dispatched: 0 };
+    }
+
+    const events = dueAutomations.map((a) => ({
+      name: 'automation.execute' as const,
+      data: {
+        automationId: a.id,
+        tenantId: a.tenantId,
+        triggerType: 'scheduled',
+      },
+    }));
+
+    await step.run('dispatch-automation-events', async () => {
+      // Advance nextRunAt immediately to prevent double-dispatch in next poll interval
+      for (const a of dueAutomations) {
+        const next = getNextRunTime(a.schedule, a.timezone);
+        await db
+          .update(automations)
+          .set({ nextRunAt: next, updatedAt: new Date() })
+          .where(eq(automations.id, a.id));
+      }
+
+      await inngest.send(events);
+    });
+
+    return { dispatched: dueAutomations.length };
+  }
+);
+

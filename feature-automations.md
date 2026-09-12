@@ -34,20 +34,25 @@ Build an Automations/Scheduler feature in Camail allowing users to configure rec
 
 ## 📅 Step-by-Step Task Checklist
 
-- [ ] Add `automations` and `automationRuns` tables to `src/server/db/schema.ts`
-- [ ] Run `npx drizzle-kit generate` & `npx drizzle-kit push`
-- [ ] Create `src/server/lib/cron-utils.ts` for cron parsing (`cron-parser`)
-- [ ] Create `src/server/services/automation-executor.ts` (shared AI prompt execution service)
-- [ ] Create `src/server/api/routers/automations.ts` (tRPC router for CRUD & runs history)
-- [ ] Register `automationsRouter` in `src/server/api/root.ts`
-- [ ] Implement `executeAutomation` and `pollDueAutomations` in `src/inngest/functions.ts`
-- [ ] Register new Inngest functions in `src/app/api/inngest/route.ts`
-- [ ] Create `/automations` UI page and subcomponents (`RunHistoryChart`, `CreateAutomationDialog`, `RunDetailView`)
-- [ ] Update `src/app/app-layout.tsx` to add "Automations" to sidebar
-- [ ] Verify feature using `test-checklist.md`
+- [x] Add `automations` and `automationRuns` tables to `src/server/db/schema.ts`
+- [x] Run `npx drizzle-kit generate` & `npx drizzle-kit push` (Migration: `0006_narrow_sebastian_shaw.sql`)
+- [x] Create `src/server/lib/cron-utils.ts` for cron parsing (`cron-parser`)
+- [x] Create `src/server/services/automation-executor.ts` (shared AI prompt execution service)
+- [x] Create `src/server/api/routers/automations.ts` (tRPC router for CRUD & runs history)
+- [x] Register `automationsRouter` in `src/server/api/root.ts`
+- [x] Implement `executeAutomation` and `pollDueAutomations` in `src/inngest/functions.ts`
+- [x] Register new Inngest functions in `src/app/api/inngest/route.ts`
+- [x] Create `/automations` UI page and subcomponents (`RunHistoryChart`, `CreateAutomationModal`, `RunDetailModal`, `templates-data.ts`)
+- [x] Update `src/app/app-layout.tsx` to add "Automations" with `Zap` icon to sidebar
+- [x] Verify feature using `test-checklist.md` (typecheck passed, build succeeded)
 
 ---
 
 ## 🔍 Verification & Sign-off
 
-- Pending completion of task checklist.
+- **TypeScript Compilation**: `pnpm typecheck` passed with 0 errors.
+- **Drizzle Schema Migration**: Generated `0006_narrow_sebastian_shaw.sql` and pushed successfully to Neon Postgres via `pnpm db:push`.
+- **Production Build**: `pnpm build` completed successfully.
+- **Decisions Logged**: Recorded in `decisions.md`.
+- **Architecture & Flow Maps**: Updated in `architecture.md` and `flow.md`.
+

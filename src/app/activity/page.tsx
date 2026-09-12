@@ -11,7 +11,6 @@ type ActivityEvent = {
   status: string | null;
   createdAt: Date | string;
   updatedAt: Date | string;
-  payload: unknown;
 };
 
 export default function ActivityPage() {
@@ -33,16 +32,6 @@ export default function ActivityPage() {
 
   const [selectedEvent, setSelectedEvent] = useState<typeof events[0] | null>(null);
 
-  const formatJSON = (json: unknown) => {
-    try {
-      if (typeof json === 'string') {
-        json = JSON.parse(json);
-      }
-      return JSON.stringify(json, null, 2);
-    } catch {
-      return "Invalid JSON payload";
-    }
-  };
 
   const getStatusBadge = (status: string | null) => {
     const s = status?.toLowerCase() ?? "pending";
@@ -246,13 +235,6 @@ export default function ActivityPage() {
                   <span className="text-gray-400 dark:text-gray-500 block mb-1">Last Updated</span>
                   <span className="text-gray-700 dark:text-gray-300 font-medium">{new Date(selectedEvent.updatedAt).toLocaleString()}</span>
                 </div>
-              </div>
-
-              <div>
-                <span className="text-gray-400 dark:text-gray-500 text-xs block mb-2">Payload Data (JSON)</span>
-                <pre className="bg-gray-900 dark:bg-black/50 text-gray-100 dark:text-gray-300 p-4 rounded-xl font-mono text-xs overflow-x-auto text-left max-h-[40vh] custom-scrollbar border dark:border-gray-900 shadow-inner leading-relaxed">
-                  {formatJSON(selectedEvent.payload)}
-                </pre>
               </div>
             </div>
 

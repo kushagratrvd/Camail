@@ -1,7 +1,5 @@
 import { streamText, type UIMessage, convertToModelMessages, stepCountIs, tool } from 'ai';
-import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
+import { getModelInstance } from '@/server/lib/models';
 import { buildCorsairToolDefs } from '@corsair-dev/mcp';
 import { corsair } from '@/server/corsair';
 import { getTenantId, getTenant } from '@/server/lib/tenant';
@@ -17,38 +15,6 @@ import { getDecryptedKeys } from '@/server/services/api-keys';
 import { buildSystemPrompt } from '@/server/lib/prompt-builder';
 import { sendEmail, sendEmailWithToken, getGmailAccessToken, replyToMessage, createDraft } from '@/server/lib/gmail-helpers';
 
-function getModelInstance(
-  modelString: string,
-  keys: { google?: string; openai?: string; anthropic?: string }
-) {
-  const [provider, modelName] = modelString.split('/');
-  if (!provider || !modelName) {
-    throw new Error(`Invalid model format: ${modelString}`);
-  }
-
-  switch (provider) {
-    case 'google': {
-      const apiKey = keys.google || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
-      if (!apiKey) throw new Error('Missing Google Gemini API Key');
-      const googleProvider = createGoogleGenerativeAI({ apiKey });
-      return googleProvider(modelName);
-    }
-    case 'openai': {
-      const apiKey = keys.openai || process.env.OPENAI_API_KEY;
-      if (!apiKey) throw new Error('Missing OpenAI API Key');
-      const openaiProvider = createOpenAI({ apiKey });
-      return openaiProvider(modelName);
-    }
-    case 'anthropic': {
-      const apiKey = keys.anthropic || process.env.ANTHROPIC_API_KEY;
-      if (!apiKey) throw new Error('Missing Anthropic API Key');
-      const anthropicProvider = createAnthropic({ apiKey });
-      return anthropicProvider(modelName);
-    }
-    default:
-      throw new Error(`Unsupported provider: ${provider}`);
-  }
-}
 
 export const maxDuration = 300;
 

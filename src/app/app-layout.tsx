@@ -20,7 +20,8 @@ import {
   Moon, 
   MessageSquare,
   MoreVertical,
-  Loader2
+  Loader2,
+  Zap
 } from "lucide-react";
 import {
   Tooltip,
@@ -137,6 +138,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       name: "Activity",
       href: "/activity",
       icon: <Activity className="w-5 h-5 transition-colors" />
+    },
+    {
+      name: "Automations",
+      href: "/automations",
+      icon: <Zap className="w-5 h-5 transition-colors" />
     },
     {
       name: "Pricing",

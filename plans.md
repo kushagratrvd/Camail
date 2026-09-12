@@ -896,28 +896,22 @@ Currently, Better Auth sign-in requests full Gmail (`gmail.modify`) and Google C
 
 ---
 
-# Automations / Scheduler Feature [PROPOSED / PENDING APPROVAL]
+# Automations / Scheduler Feature
 
-Build an automation system where users can create scheduled AI-powered tasks (e.g., "Check my Gmail for job application emails daily at 9:30 AM and summarize them"). Automations run on a cron schedule via Inngest, execute through the existing AI chat pipeline, and display results in a dedicated UI inspired by the Grok Automations screenshots.
+Build an automation system where users can create scheduled AI-powered tasks (e.g., "Check my Gmail for job application emails daily at 9:30 AM and summarize them"). Automations run on a cron schedule via Inngest, execute through the AI tool execution pipeline, and display results in a dedicated UI inspired by the Grok Automations screenshots.
 
-## User Review Required
+---
 
-> [!IMPORTANT]
-> **Inngest as the scheduler**: The project already uses Inngest for background jobs (webhook sync, renewal crons). This plan uses a single "poll all due automations" cron pattern (`pollDueAutomations` running every 5 minutes) to dispatch `automation.execute` events, keeping job execution within free tier limits.
+## User Decisions & Confirmed Architecture
 
-> [!WARNING]
-> **AI execution budget**: Each automation run will consume AI quota (via the existing `enforceAiQuota`). Automation runs will count toward the user's monthly AI quota unless custom API keys are active.
-
-> [!IMPORTANT]
-> **Templates**: Pre-built starter templates (Morning Brief, Daily Stock Tracker, Email Auto-Responder) will be included in the UI tab.
-
-## Open Questions
-
-1. **Quota model**: Should automation runs share the same AI quota as chat, or have a separate pool? (Recommend: unified for V1.)
-2. **Templates**: Include starter templates in V1, or just custom "New Automation" flow? (Recommend: included.)
-3. **Run result depth**: Store full AI markdown response in `automation_runs` table.
-4. **Max automations per user**: 10 active automations per user for V1.
-5. **Timezone handling**: User timezone captured on creation, with browser timezone auto-detection.
+| Requirement               | Decided Approach                                                  | Architectural Impact                                                                                                                                      |
+| :------------------------ | :---------------------------------------------------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Model Selection**       | **User selects model per automation**                             | `model` column in `automations` table. Dropdown in modal showing Gemini, OpenAI, Claude based on saved keys. `getModelInstance(model, keys)` in executor. |
+| **Quota Model**           | **Unified with Chat**                                             | Calls `enforceAiQuota(userId)` per run. Free users share the unified quota; users with custom API keys or Pro status bypass limits.                       |
+| **Max Automations Limit** | **Tiered: Max 3 for free (no key), Unlimited for Pro / with key** | Enforced in `automation.create` tRPC procedure: checks user's active API keys (`userApiKeys`) and Pro tier before allowing creation.                      |
+| **Run Result Depth**      | **Full AI markdown response**                                     | Store full markdown response in `automation_runs.result_content` (`text`). Rendered using `MarkdownRenderer` in run details.                              |
+| **Timezone**              | **Global user preference**                                        | Crons resolve next execution time relative to user's global timezone setting (with browser fallback).                                                     |
+| **Templates**             | **Include starter templates in V1**                               | Ship with presets: _"Daily Morning Briefing"_, _"Unanswered Emails Follow-up"_, _"Daily Calendar Schedule"_, _"Job Application Tracker"_.                 |
 
 ---
 
@@ -928,8 +922,40 @@ Build an automation system where users can create scheduled AI-powered tasks (e.
 #### [MODIFY] [schema.ts](file:///c:/Users/kusha/Downloads/Camail/src/server/db/schema.ts)
 
 Add two new tables:
-- `automations` table: stores user-defined automations (`id`, `tenantId`, `name`, `prompt`, `schedule`, `scheduleLabel`, `timezone`, `status`, `icon`, `lastRunAt`, `nextRunAt`).
-- `automationRuns` table: stores each execution result (`id`, `automationId`, `tenantId`, `status`, `resultTitle`, `resultContent`, `durationMs`, `error`, `startedAt`, `completedAt`).
+
+**`automations` table** — stores user-configured automations:
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `text` PK | UUID (`gen_random_uuid()`) |
+| `tenantId` | `text` (indexed) | User ID (Better Auth session) |
+| `name` | `varchar(255)` | e.g., "Daily Job Application Email Check" |
+| `prompt` | `text` | The AI instruction prompt |
+| `model` | `varchar(64)` | Selected model (e.g. `'google/gemini-2.5-flash'`, `'openai/gpt-5.4'`) |
+| `schedule` | `varchar(64)` | Standard cron expression (e.g., `"30 9 * * *"`) |
+| `scheduleLabel` | `varchar(128)` | Human-readable (e.g., `"Daily at 9:30 AM"`) |
+| `timezone` | `varchar(64)` | User's timezone (e.g., `"Asia/Kolkata"`, `"America/New_York"`) |
+| `status` | `varchar(32)` | `'active'` or `'paused'` (default `'active'`) |
+| `icon` | `varchar(32)` | Lucide icon identifier or emoji |
+| `lastRunAt` | `timestamp with time zone` | Last run timestamp |
+| `nextRunAt` | `timestamp with time zone` (indexed) | Computed next run timestamp for fast poller indexing |
+| `createdAt` | `timestamp with time zone` | `now()` |
+| `updatedAt` | `timestamp with time zone` | `now()` |
+
+**`automation_runs` table** — stores execution history and full AI output:
+| Column | Type | Description |
+|--------|------|-------------|
+| `id` | `text` PK | UUID (`gen_random_uuid()`) |
+| `automationId` | `text` FK → `automations.id` (onDelete: cascade) | Parent automation |
+| `tenantId` | `text` (indexed) | User ID |
+| `status` | `varchar(32)` | `'succeeded'` / `'failed'` / `'running'` |
+| `resultTitle` | `varchar(255)` | Short summary title generated by AI |
+| `resultContent` | `text` | **Full markdown AI response** with all extracted insights |
+| `modelUsed` | `varchar(64)` | Exact model that executed the run |
+| `durationMs` | `integer` | Execution duration in milliseconds |
+| `error` | `text` | Error message if failed |
+| `startedAt` | `timestamp with time zone` | Execution start |
+| `completedAt` | `timestamp with time zone` | Execution end |
+| `createdAt` | `timestamp with time zone` | `now()` |
 
 ---
 
@@ -937,63 +963,145 @@ Add two new tables:
 
 #### [NEW] [automations.ts](file:///c:/Users/kusha/Downloads/Camail/src/server/api/routers/automations.ts)
 
-New tRPC router with procedures: `list`, `getById`, `create`, `update`, `delete`, `toggleStatus`, `listRuns`, `getRunById`, `runNow`.
+Protected tRPC router (`protectedProcedure`) with:
+
+- `list` — returns all automations for current user + stats (total runs, last status).
+- `getById` — returns single automation config + recent 10 runs.
+- `create` — creates an automation:
+  - **Quota Guard**: Checks count of existing user automations. If $\ge 3$, checks if user is Pro or has custom API keys in `user_api_keys`. If neither, throws `FORBIDDEN: Free tier limit of 3 automations reached. Add an API key or upgrade to Pro for unlimited.`
+  - Calculates initial `nextRunAt` using `cron-parser` and user timezone.
+- `update` — updates name, prompt, model, schedule, status. Recalculates `nextRunAt`.
+- `delete` — deletes automation (cascades runs).
+- `toggleStatus` — switches between `'active'` and `'paused'`.
+- `listRuns` — paginated run history across all automations (for the "Runs" tab) with filter by status or automation ID.
+- `getRunById` — returns single run with full markdown response.
+- `runNow` — triggers an immediate manual execution via Inngest `automation.execute` event.
+- `getStats` — returns aggregated 30-day run counts (succeeded vs failed) for the history chart.
 
 #### [MODIFY] [root.ts](file:///c:/Users/kusha/Downloads/Camail/src/server/api/root.ts)
 
-Register `automationsRouter`.
+Register `automations: automationsRouter` in the app router.
 
 ---
 
-### Inngest Execution Engine
-
-#### [MODIFY] [functions.ts](file:///c:/Users/kusha/Downloads/Camail/src/inngest/functions.ts)
-
-Add `executeAutomation` and `pollDueAutomations` functions.
-
-#### [MODIFY] [route.ts](file:///c:/Users/kusha/Downloads/Camail/src/app/api/inngest/route.ts)
-
-Register new Inngest functions in serve handler.
-
----
-
-### Shared AI Execution Service
+### AI Automation Execution Engine
 
 #### [NEW] [automation-executor.ts](file:///c:/Users/kusha/Downloads/Camail/src/server/services/automation-executor.ts)
 
-Shared AI executor service refactored from chat route.
+Dedicated background executor:
+
+1. Loads user's custom API keys using `getDecryptedKeys(tenantId)`.
+2. Checks AI quota using `enforceAiQuota(tenantId, hasCustomKeys)`.
+3. Instantiates requested model via `getModelInstance(model, keys)`.
+4. Initializes Corsair context for the user: `corsair.withTenant(tenantId)`.
+5. Prepares tool definitions (Gmail search/read/send, Calendar event search/create).
+6. Generates full response using `generateText` from Vercel AI SDK (with multi-step tool calls up to 5 steps).
+7. Generates a concise title for the run + full markdown body.
+8. Returns `{ success: true, title, content, durationMs, modelUsed }`.
 
 #### [NEW] [cron-utils.ts](file:///c:/Users/kusha/Downloads/Camail/src/server/lib/cron-utils.ts)
 
-Cron parsing and next-run calculation utilities.
+Utilities for cron parsing and scheduling:
+
+- `getNextRunTime(cronExpression: string, timezone?: string): Date`
+- `formatCronSchedule(cronExpression: string): string` (e.g. `"Every day at 9:30 AM"`)
+- `validateCronExpression(cronExpression: string): boolean`
 
 ---
 
-### Frontend — Automations Page & Sidebar
+### Inngest Workflow Integration
+
+#### [MODIFY] [functions.ts](file:///c:/Users/kusha/Downloads/Camail/src/inngest/functions.ts)
+
+Add two Inngest functions:
+
+1. **`executeAutomation` (`automation.execute`)**:
+   - Event payload: `{ automationId: string, tenantId: string, triggerType: 'scheduled' | 'manual' }`.
+   - **Step 1:** Create `automation_runs` record with status `'running'`.
+   - **Step 2:** Call `automation-executor.ts` to run AI tools and generate markdown.
+   - **Step 3:** Update `automation_runs` record with status (`'succeeded'` or `'failed'`), full `resultContent`, `durationMs`, and `error`.
+   - **Step 4:** Update `automations.lastRunAt` and recalculate `automations.nextRunAt`.
+
+2. **`pollDueAutomations` (`cron: '*/5 * * * *'`)**:
+   - Runs every 5 minutes.
+   - Queries `automations` table:
+     ```sql
+     SELECT * FROM automations WHERE status = 'active' AND next_run_at <= NOW() LIMIT 50;
+     ```
+   - Sends `automation.execute` Inngest events for each due automation.
+   - Advances each automation's `next_run_at` to prevent double-firing.
+
+#### [MODIFY] [route.ts](file:///c:/Users/kusha/Downloads/Camail/src/app/api/inngest/route.ts)
+
+Register `executeAutomation` and `pollDueAutomations` in the Inngest handler.
+
+---
+
+### Frontend — Automations Page
 
 #### [NEW] [page.tsx](file:///c:/Users/kusha/Downloads/Camail/src/app/automations/page.tsx)
 
-Automations & Runs tab views, templates grid, and history chart.
+Matches Grok Automations aesthetic with two primary views:
+
+- **"Automations" tab**:
+  - 30-day run activity summary chart (green succeeded, red failed).
+  - Automations table: Name, Model badge, Schedule, Next Run, Status toggle, and Actions menu (Edit, Run Now, Pause, Delete).
+  - **Templates Gallery**: Pre-built cards (Morning Brief, Unanswered Emails, Meeting Prep) with "Use Template" button.
+  - "New Automation" button triggering creation modal.
+- **"Runs" tab**:
+  - Filterable run history list with status indicator (`✓` / `✗`), title, duration badge, model used, and timestamp.
+  - Clicking a run opens the **Run Detail View** displaying the full AI markdown report.
+
+#### [NEW] [create-automation-modal.tsx](file:///c:/Users/kusha/Downloads/Camail/src/app/automations/_components/create-automation-modal.tsx)
+
+Modal form with:
+
+- Name input + icon picker.
+- **Model Dropdown**: (Gemini 2.5 Flash, GPT-5.4, GPT-5.2, Claude Opus 4.7, Claude Sonnet 4.6). Shows which keys are configured and allows selection.
+- Prompt editor with placeholder helpers.
+- Schedule selector (Preset times: Daily 8:00 AM, Daily 9:30 AM, Weekly Monday 9 AM, or Custom Cron).
+- Timezone display (defaults to user preference or browser local).
+
+#### [NEW] [run-detail-modal.tsx](file:///c:/Users/kusha/Downloads/Camail/src/app/automations/_components/run-detail-modal.tsx)
+
+Full-width modal / drawer rendering:
+
+- Run header: Title, status badge, execution duration ("Worked for 4.2s"), model used.
+- Full AI response formatted with `MarkdownRenderer`.
+- Error trace if failed.
+
+#### [NEW] [templates-data.ts](file:///c:/Users/kusha/Downloads/Camail/src/app/automations/_components/templates-data.ts)
+
+Starter template library:
+
+1. **Daily Morning Email Briefing**: Checks last 24h of inbox, categorizes high priority vs newsletters, outputs actionable summary.
+2. **Unanswered Emails Follow-Up**: Finds emails where you were asked a question or task was pending in last 3 days.
+3. **Daily Schedule & Calendar Prep**: Pulls today's Google Calendar events and prepares briefing notes for each meeting.
+4. **Job Application / Interview Tracker**: Searches for recruiter emails, interview invites, and application status updates.
 
 #### [MODIFY] [app-layout.tsx](file:///c:/Users/kusha/Downloads/Camail/src/app/app-layout.tsx)
 
-Add Automations item with Zap icon to sidebar navigation.
+Add "Automations" item with `Zap` icon in sidebar navigation between "Activity" and "Settings".
 
 ---
 
-## Verification Plan
+### Verification Plan
 
-### Automated Tests
+#### Automated Verification
+
 ```bash
-pnpm db:generate   # Generate new migration
-pnpm db:push       # Push schema to database
-pnpm typecheck     # TypeScript check
-pnpm build         # Full production build
+pnpm db:generate       # Generate schema migrations
+pnpm db:push           # Apply schema changes to Neon DB
+pnpm typecheck         # Verify zero TypeScript compiler errors
+pnpm build             # Full Next.js production build validation
 ```
 
-### Manual Verification
-1. Verify sidebar "Automations" link works.
-2. Create, pause, resume, and delete automations.
-3. Perform manual "Run Now" execution and check Runs tab output.
-4. Verify run history bar chart rendering.
-```
+#### Manual Verification Workflow
+
+1. **Sidebar Navigation**: Click "Automations" in sidebar, verify page loads cleanly.
+2. **Template Usage**: Click "Use Template" on Morning Briefing, verify modal prepopulates with prompt & schedule.
+3. **Model Selection**: Select different models (Gemini vs OpenAI vs Claude), save, and verify model column in DB.
+4. **Creation Limit Guard**: Create 3 automations with free user (no API key); verify 4th creation attempt shows upgrade/add-key dialog.
+5. **Run Now**: Click "Run Now" on an active automation; verify Inngest processes the event, runs AI tools, and saves full markdown report.
+6. **Runs Tab**: View newly completed run in Runs tab; click to inspect full AI markdown response.
+7. **Pause / Resume**: Toggle automation to "Paused"; verify status changes and poller skips it.

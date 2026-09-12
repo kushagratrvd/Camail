@@ -47,8 +47,8 @@
 | `corsair_chats` | Conversation history | `id`, `tenantId`, `title`, `messages` |
 | `corsair_sync_quotas` | Two quota systems: sync quota (daily, limit 10) via `count`/`lastReset`; AI chat quota (monthly, limit 50) via `aiCount`/`aiLastReset` | `tenantId`, `count`, `lastReset`, `aiCount`, `aiLastReset` |
 | `user_api_keys` | Encrypted user LLM keys | `userId`, `googleKeyEnc`, `openaiKeyEnc`, `anthropicKeyEnc` |
-| `automations` *(Planned)* | Scheduled AI workflow definitions | `id`, `tenantId`, `name`, `prompt`, `schedule`, `status` |
-| `automation_runs` *(Planned)* | Automation execution logs | `id`, `automationId`, `tenantId`, `status`, `resultContent` |
+| `automations` | Scheduled AI workflow definitions | `id`, `tenantId`, `name`, `prompt`, `model`, `schedule`, `scheduleLabel`, `timezone`, `status`, `icon`, `lastRunAt`, `nextRunAt` |
+| `automation_runs` | Automation execution history & full AI markdown output | `id`, `automationId`, `tenantId`, `status`, `resultTitle`, `resultContent`, `modelUsed`, `durationMs`, `error`, `startedAt`, `completedAt` |
 
 ---
 
@@ -62,11 +62,23 @@
    - Encrypts and decrypts user API keys using server secret `ENCRYPTION_SECRET`.
    - Never exposes plaintext keys to client-side JS.
 
-3. **`src/server/lib/prompt-builder.ts`**:
+3. **`src/server/services/automation-executor.ts`**:
+   - Executes background automation prompts using Vercel AI SDK `generateText`.
+   - Multi-step tool execution with Corsair Gmail/Calendar tools and dedicated email tools.
+   - Decrypts user API keys or invokes `enforceAiQuota`. Produces full markdown reports.
+
+4. **`src/server/lib/cron-utils.ts`**:
+   - Timezone-aware cron parsing via `cron-parser`. Computes next run execution timestamps and generates human-friendly schedule labels.
+
+5. **`src/server/lib/models.ts`**:
+   - Shared multi-provider factory (`getModelInstance`) supporting Gemini, OpenAI GPT, and Anthropic Claude.
+
+6. **`src/server/lib/prompt-builder.ts`**:
    - Constructs rich identity, user timezone, integration status, and operation safety rules into system prompts.
 
-4. **`src/inngest/functions.ts`**:
-   - Handles background webhooks, initial 50-item backfills, webhook renewals, and upcoming automation execution crons.
+7. **`src/inngest/functions.ts`**:
+   - Background tasks: `syncGmailWebhook`, `handleIntegrationConnected`, `renewExpiringWebhooks`.
+   - Automations: `pollDueAutomations` (5-min poller) and `executeAutomation` (durable multi-step execution).
 
 ---
 

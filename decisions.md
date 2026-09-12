@@ -51,6 +51,47 @@
 
 ---
 
+### [2026-09-12] Decision: Per-Automation Model Selection with Server-Side Decrypted Keys over App-Wide Model Locking
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Allow users to choose their preferred AI model (Gemini 2.5 Flash, GPT-5.4, GPT-5.2, Claude Opus 4.7, Claude Sonnet 4.6) per automation, dynamically checking if the required provider key is saved in `user_api_keys`.
+- **Alternatives Considered**: Forcing all background automations to run strictly on default Gemini Flash, or requiring a global default model setting.
+- **Reasoning**: Users need different models for different tasks (e.g. lightweight fast summaries with Gemini Flash vs complex reasoning with Claude Opus). By persisting `model` on the `automations` table and resolving keys via `getDecryptedKeys(tenantId)`, automations execute autonomously with the exact provider the user intended.
+
+---
+
+### [2026-09-12] Decision: Unified AI Quota & Tiered 3-Automation Free Cap over Separate Quota Pools
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Unify automation execution quota with chat AI quota (`enforceAiQuota`). Free users without custom API keys are capped at **3 active automations**; users with custom API keys or Pro status have **unlimited automations**.
+- **Alternatives Considered**: Creating a dedicated second quota table/counter for automations or completely banning free users from automations.
+- **Reasoning**: Prevents user confusion by sharing a single simple monthly budget. The 3-automation cap on free tier avoids abuse while giving users full access to test out the scheduling features. Adding their own API keys removes all limits without server cost risk.
+
+---
+
+### [2026-09-12] Decision: Full Markdown Response Persistence in `automation_runs` over Brief Summaries
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Persist the complete, rich AI response in `automation_runs.result_content` (`text`) and render it via `MarkdownRenderer` in a dedicated run inspection drawer/modal.
+- **Alternatives Considered**: Storing only a 2-line summary or discarding the output after alerting the user.
+- **Reasoning**: Automations frequently extract complex multi-item insights (e.g., categorizing 20 emails with action items, bulleted meeting agendas). Users must be able to audit, inspect, and copy the full historical trace from the Runs tab.
+
+### [2026-09-12] Decision: Typed Drizzle Comparison Operators (`gte`, `lte`) over Raw `sql` Template String Date Interpolation
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Always use Drizzle's typed column operators (e.g. `gte(table.createdAt, dateObj)`) rather than raw `sql`${table.createdAt} >= ${dateObj}`` when querying timestamp columns.
+- **Alternatives Considered**: Raw SQL string concatenation or passing Date instances into `sql`\`...\`.
+- **Reasoning**: In postgres-js, interpolating a raw `Date` object into Drizzle's `sql` template bypasses column-level driver serializers. The underlying driver attempts to call `Buffer.from(param)`, triggering `TypeError: The "string" argument must be of type string or an instance of Buffer or ArrayBuffer. Received an instance of Date`. Typed operators (`gte`, `lte`) properly invoke Drizzle's timestamp encoder.
+
+### [2026-09-13] Decision: Omit Raw Event Payload from Activity Log Responses & UI
+*Model: Gemini 3.8 Flash*
+
+- **Decision**: Restrict `activityRouter.getRecentEvents` to selecting only metadata (`id`, `eventType`, `status`, `createdAt`, `updatedAt`), omitting the `corsair_events.payload` JSONB column. Remove raw payload rendering in `/activity`.
+- **Alternatives Considered**: Masking/sanitizing known sensitive keys in the JSON payload before client serialization.
+- **Reasoning**: Raw event payloads from Gmail/Calendar webhooks contain email snippets, message IDs, and attendee headers. Completely omitting the payload column server-side prevents accidental PII exposure during screen-shares and minimizes bandwidth, while still providing full audit visibility of execution events and status.
+
+---
+
 ## 🗓️ Planned Future Improvements
 
 ### [2026-08-20] Planned: Tie AI Quota Enforcement to Connected Gmail Email, Not Just `user.id`

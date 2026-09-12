@@ -4,6 +4,7 @@ import { activityRouter } from "@/server/api/routers/activity";
 import { chatRouter } from "@/server/api/routers/chat";
 import { apiKeysRouter } from "@/server/api/routers/apiKeys";
 import { integrationsRouter } from "@/server/api/routers/integrations";
+import { automationsRouter } from "@/server/api/routers/automations";
 import { createCallerFactory, createTRPCRouter } from "@/server/api/trpc";
 
 /**
@@ -18,6 +19,7 @@ export const appRouter = createTRPCRouter({
   chat: chatRouter,
   apiKeys: apiKeysRouter,
   integrations: integrationsRouter,
+  automations: automationsRouter,
 });
 
 // export type definition of API

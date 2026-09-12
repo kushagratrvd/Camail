@@ -5,11 +5,11 @@
 
 ---
 
-## 📌 Current Status Snapshot (As of 2026-08-20)
+## 📌 Current Status Snapshot (As of 2026-09-12)
 
-- **Overall Health**: Stable. Core chat, Gmail/Calendar integration sync, API key encryption, and BYOK quota system are fully implemented and verified.
-- **Active Scope**: Planning & documentation phase for **Automations / Scheduler Feature** (daily email checks, summary generation, prompt alerts, schedule execution, run history visualizer).
-- **Recent Completion**: Added AI Chat Assistant via Corsair MCP + Vercel AI SDK, BYOK encrypted API key storage, decoupled OAuth scopes, and route security.
+- **Overall Health**: Stable & verified. Core chat, Gmail/Calendar sync, API key encryption, BYOK quota system, and the complete **Automations / Scheduler Feature** are fully implemented, verified via `pnpm typecheck`, `pnpm db:push`, and `pnpm build`.
+- **Active Scope**: Automations / Scheduler Feature is complete and integrated into UI. Ready for user testing and deployment.
+- **Recent Completion**: End-to-end Automations feature (Drizzle schema, Inngest cron & dispatch executor, tRPC automations router, shared AI model factory, and `/automations` management UI).
 
 ---
 
@@ -24,33 +24,39 @@
    - `user_api_keys` Drizzle table; client UI displays masked hints (`sk-p••••a3Bf`).
 3. **AI Chat Engine & Corsair MCP Tools**:
    - `/api/chat` route with Vercel AI SDK (`streamText`) + Corsair MCP tool definitions.
+   - Shared model instantiation (`src/server/lib/models.ts`) across chat and automations.
    - Custom tools: `send_email`, `reply_to_message`, `create_draft` (handles MIME/base64 automatically).
    - System prompt builder with timezone formatting, guardrails, and quota enforcement.
 4. **Background Sync & Webhooks**:
    - Inngest integration for Gmail Pub/Sub webhooks & Calendar channel sync.
    - Automatic webhook renewal cron running daily (`renewExpiringWebhooks`).
+5. **Automations & AI Scheduler Feature**:
+   - `automations` and `automation_runs` tables with indices and foreign keys in Neon Postgres.
+   - Poll-and-dispatch background engine (`pollDueAutomations` cron + `executeAutomation` worker) avoiding Inngest cron limits.
+   - Autonomous executor (`src/server/services/automation-executor.ts`) with Corsair tools and BYOK key decryption.
+   - Protected tRPC router (`src/server/api/routers/automations.ts`) with 3-automation free tier guard.
+   - Modern, responsive `/automations` UI with templates gallery, 30-day activity chart, and full markdown run viewer.
 
 ---
 
 ## 🚧 In Progress
 
-- **Automations / Scheduler Feature**:
-  - Implementation plan drafted (see [plans.md](file:///c:/Users/kusha/Downloads/Camail/plans.md)).
-  - Pending user approval before database migrations (`automations`, `automationRuns`) and execution.
+- Feature complete; awaiting user testing and deployment review.
 
 ---
 
 ## ⚠️ Unstable / Sensitive Areas to Watch Out For
 
 - **Google OAuth Quotas**: Shared Google Console project quota. Avoid unthrottled API polling loops.
-- **Inngest Cron Execution**: Use the poll-and-dispatch pattern (`pollDueAutomations` cron triggering `automation.execute` events) to remain within free tier limits.
-- **RunScript Safety Rules**: `validateRestrictedOperations` in `quota.ts` blocks `messages.send`, `drafts.create/send`, `messages.delete/trash`, `threads.delete/trash`, and `events.delete` at script execution time. Use dedicated tools (`send_email`, `create_draft`, `reply_to_message`) for all email sending.
+- **Inngest Cloud & Fallback**: In production, Inngest Cloud calls `/api/inngest` and receives events via `INNGEST_EVENT_KEY`. In local development without an event key, `runNow` transparently falls back to direct background execution.
+- **RunScript Safety Rules**: `validateRestrictedOperations` in `quota.ts` blocks restricted raw operations at script execution time. Dedicated tools (`send_email`, `create_draft`, `reply_to_message`) must be used for email creation.
 
 ---
 
 ## 📝 5-Line Session Summary
-- **Done**: Created foundational system documentation (`handover.md`, `decisions.md`, `flow.md`, `architecture.md`, `constraints.md`, `feature-automations.md`, `test-checklist.md`, `rollback.md`) and appended the Automations Implementation Plan to `plans.md`.
-- **In Progress**: Aligning with user on open design choices for the Automations feature (templates, quota, run depth).
-- **Next Up**: Run DB migrations for `automations` & `automationRuns` tables upon user approval, followed by building the backend tRPC router and Inngest execution engine.
-- **Watch Out**: Keep Inngest jobs idempotent; ensure proper error handling when running scheduled AI prompts.
-- **Status**: Ready for feature execution upon approval.
+
+- **Done**: Fully implemented Automations/Scheduler end-to-end, made `/automations` scrollable, and hardened `/activity` by stripping raw JSON payload from queries & UI.
+- **In Progress**: Validated automation creation and manual execution flows.
+- **Next Up**: Observe manual and scheduled runs in Runs History tab, then commit changes to Git.
+- **Watch Out**: Inngest functions (`executeAutomation`, `pollDueAutomations`) are automatically served by Inngest Cloud via `/api/inngest`.
+- **Status**: Production build & runtime verified. Ready for testing.

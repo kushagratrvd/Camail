@@ -41,7 +41,13 @@ export const activityRouter = createTRPCRouter({
       const totalPages = Math.ceil(total / input.limit);
 
       const events = await ctx.db
-        .select()
+        .select({
+          id: corsairEvents.id,
+          eventType: corsairEvents.eventType,
+          status: corsairEvents.status,
+          createdAt: corsairEvents.createdAt,
+          updatedAt: corsairEvents.updatedAt,
+        })
         .from(corsairEvents)
         .where(inArray(corsairEvents.accountId, accountIds))
         .orderBy(desc(corsairEvents.createdAt))
