@@ -4,6 +4,7 @@ import { corsair, ensureCredentialsSynced } from '@/server/corsair';
 import { db } from '@/server/db';
 import { corsairAccounts, corsairIntegrations } from '@/server/db/schema';
 import { and, eq } from 'drizzle-orm';
+import { auth } from '@/server/auth';
 
 async function needsConsentPrompt(plugin: string, tenantId: string): Promise<boolean> {
   const integration = await db.query.corsairIntegrations.findFirst({
@@ -26,6 +27,12 @@ async function needsConsentPrompt(plugin: string, tenantId: string): Promise<boo
 export async function GET(req: NextRequest) {
   await ensureCredentialsSynced();
 
+  // Verify the user is authenticated before proceeding
+  const session = await auth.api.getSession({ headers: req.headers });
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const plugin = req.nextUrl.searchParams.get('plugin');
   const tenantId = req.nextUrl.searchParams.get('tenantId');
 
@@ -34,6 +41,13 @@ export async function GET(req: NextRequest) {
       { error: 'Missing plugin or tenantId parameter' }, 
       { status: 400 }
     );
+  }
+
+  // Guard: tenantId in query string must match the authenticated session user.
+  // Without this check, any user could craft a URL with another user's tenantId
+  // and link their Google account to a different tenant's integration.
+  if (tenantId !== session.user.id) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   const REDIRECT_URI = new URL('/api/auth', req.nextUrl.origin).toString();
