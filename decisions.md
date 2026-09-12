@@ -108,4 +108,12 @@
 - **Planned Fix**: In `enforceAiQuota`, additionally key quota on the connected Gmail `accountEmail` from `corsair_accounts`. If `accountEmail` matches an existing quota record, apply it regardless of which auth `user.id` is active. This prevents the same person connecting the same Gmail inbox from multiple auth accounts to multiply their quota.
 - **Also Needed**: Add FK from `corsairSyncQuotas.tenantId` → `users.id` (with `onDelete: cascade`) to prevent orphaned quota rows when users are deleted. Do this in the next schema migration (automations migration is a good opportunity).
 - **Alternatives Considered**: IP-based rate limiting (easily bypassed by VPN), phone verification (too much friction for free tier), payment verification (premature).
-- **Priority**: Low — implement when the platform has real paying users or the 50 query limit is frequently hit.
+- **Priority**: Low — implement when the platform has real paying users or the 30 query limit is frequently hit.
+
+---
+
+### [2026-09-13] Decision: 30 Free AI Queries/Month over 50 Queries/Month
+- **AI Model**: Antigravity (Advanced Agentic Coding)
+- **Decision**: Reduced the Starter free tier AI quota from 50 to 30 queries/month across backend enforcement (`src/server/lib/quota.ts`), pricing page, and marketing landing page.
+- **Alternatives Considered**: Keeping 50 queries/month or dropping to 20 queries/month.
+- **Reason**: 30 queries per month provides 1 query per day for casual free users, balancing API token operational overhead on the default platform keys while providing sufficient utility before prompting upgrade to Pro (₹399/mo) or bringing custom API keys (BYOK).

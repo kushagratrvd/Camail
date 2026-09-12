@@ -65,7 +65,7 @@ POST /api/chat  [src/app/api/chat/route.ts]
    ├─► 2. Authenticate user, get tenantId (src/server/lib/tenant.ts → Better Auth session)
    ├─► 3. Fetch decrypted API keys from DB (src/server/services/api-keys.ts)
    ├─► 4. Enforce AI quota if no custom key (src/server/lib/quota.ts → enforceAiQuota)
-   │       — 50 AI requests/month limit per user on free tier
+   │       — 30 AI requests/month limit per user on free tier
    ├─► 5. getTenant() → Corsair SDK synced tenant instance (also renews watches if needed)
    ├─► 6. Build Corsair MCP tool definitions via buildCorsairToolDefs()
    │       + Register dedicated tools: send_email, reply_to_message, create_draft

@@ -56,7 +56,8 @@ export function SaaSLanding() {
       <header className="landing-header sticky top-0 z-50 w-full border-b border-white/10 bg-[#0f0e13]/85 backdrop-blur-md">
    <div className="nav-bar h-15 mx-auto max-w-7xl px-6 sm:px-12 flex items-center justify-between">
      {/* Logo */}
-     <div className="flex items-center gap-3">
+     <div className="flex items-center gap-2.5">
+       <img src="/image.png" alt="Camail" className="w-8 h-8 object-contain" />
        <span className="font-bold text-lg tracking-tight text-white">
          Camail
        </span>
@@ -296,21 +297,22 @@ export function SaaSLanding() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white">Starter</h3>
                 <p className="text-xs text-zinc-400 mt-2 leading-relaxed h-10 font-light">
-                  Essential tools for basic email summaries and scheduling.
+                  Essential AI assistant and scheduled routines for personal workflows.
                 </p>
               </div>
 
               <div className="flex items-baseline mb-6 border-b border-white/10 pb-6">
-                <span className="text-4xl font-extrabold text-white">$0</span>
+                <span className="text-4xl font-extrabold text-white">₹0</span>
                 <span className="text-sm text-zinc-400 ml-1">/ month</span>
               </div>
 
               <ul className="space-y-4 mb-8 flex-1">
                 {[
-                  "50 AI queries per month",
-                  "Summarize last 3 unread emails",
-                  "View upcoming schedule",
-                  "Standard support responses",
+                  "30 AI queries per month",
+                  "Up to 3 active automations",
+                  "Starter routine templates",
+                  "Gmail & Google Calendar AI summaries",
+                  "Standard support",
                 ].map((feature) => (
                   <li key={feature} className="flex items-start text-sm text-zinc-300 font-light">
                     <CheckCircle2 className="w-4 h-4 text-white mt-0.5 mr-3 flex-shrink-0" />
@@ -336,24 +338,25 @@ export function SaaSLanding() {
               <div className="mb-6">
                 <h3 className="text-xl font-bold text-white">Pro</h3>
                 <p className="text-xs text-zinc-400 mt-2 leading-relaxed h-10 font-light">
-                  Advanced AI assistance and fully automated workflows.
+                  Advanced AI assistance with unlimited autonomous routines and all models.
                 </p>
               </div>
 
               <div className="flex items-baseline mb-6 border-b border-white/10 pb-6">
                 <span className="text-4xl font-extrabold text-white">
-                  ${billingCycle === "monthly" ? "15" : "12"}
+                  ₹{billingCycle === "monthly" ? "399" : "319"}
                 </span>
                 <span className="text-sm text-zinc-400 ml-1">/ month</span>
               </div>
 
               <ul className="space-y-4 mb-8 flex-1">
                 {[
-                  "Unlimited AI assistant queries",
-                  "Full Gmail write/read synchronization",
-                  "Google Calendar auto-scheduling",
-                  "Smarter multi-turn agent memory",
-                  "Draft complex communications",
+                  "Unlimited active automations & cron schedules",
+                  "All AI models (GPT-5.4, Claude Opus, Gemini)",
+                  "Unlimited AI chat assistant queries",
+                  "Autonomous multi-step tool execution",
+                  "Full Gmail & Google Calendar synchronization",
+                  "Complete Markdown run reports & inspection",
                   "Priority email support",
                 ].map((feature) => (
                   <li key={feature} className="flex items-start text-sm text-zinc-300 font-light">
@@ -437,8 +440,9 @@ export function SaaSLanding() {
 
       {/* Footer */}
       <footer className="h-20 px-6 sm:px-12 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/5 bg-[#09080c] text-xs text-zinc-500 mt-auto">
-        <div>
-          &copy; {new Date().getFullYear()} Camail. All rights reserved.
+        <div className="flex items-center gap-2">
+          <img src="/image.png" alt="Camail" className="w-4 h-4 rounded object-cover opacity-80" />
+          <span>&copy; {new Date().getFullYear()} Camail. All rights reserved.</span>
         </div>
         <div className="flex items-center gap-6">
           <Link className="hover:text-zinc-300 transition-colors" href="/terms">Terms of Service</Link>

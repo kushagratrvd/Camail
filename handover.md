@@ -55,8 +55,9 @@
 
 ## 📝 5-Line Session Summary
 
-- **Done**: Fully implemented Automations/Scheduler end-to-end, made `/automations` scrollable, hardened `/activity` (removed raw payload), and secured `/docs` (removed internal API specs & openapi.json).
-- **In Progress**: Validated automation creation and manual execution flows.
-- **Next Up**: Observe manual and scheduled runs in Runs History tab, then commit changes to Git.
-- **Watch Out**: Inngest functions (`executeAutomation`, `pollDueAutomations`) are automatically served by Inngest Cloud via `/api/inngest`.
+- **Done**: Configured free Starter plan limit to 30 AI queries/month (backend in `quota.ts`, landing page, `/pricing`), updated pricing to ₹399/mo, and updated branding.
+- **In Progress**: Completed quota adjustment across all layers.
+- **Next Up**: Final verification and user testing of AI assistant and automation limits.
+- **Watch Out**: Default platform keys enforce 30 AI queries/month; users with custom BYOK keys or Pro bypass this limit.
 - **Status**: Production build & runtime verified. Ready for testing.
+

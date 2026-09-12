@@ -60,7 +60,8 @@ export async function enforceSyncQuota(tenantId: string) {
   return quota;
 }
 
-const MONTHLY_AI_LIMIT = 50;
+// Free tier AI query limit per month (default platform API key usage)
+const MONTHLY_AI_LIMIT = 30;
 
 export async function checkAndIncrementAiQuota(tenantId: string): Promise<{ allowed: boolean; remaining: number; limit: number }> {
   const currentMonth = new Date().toISOString().substring(0, 7); // YYYY-MM

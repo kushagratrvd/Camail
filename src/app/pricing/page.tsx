@@ -20,26 +20,28 @@ export default function PricingPage() {
     {
       name: "Starter",
       price: "0",
-      description: "Essential tools for basic email summaries and scheduling.",
+      description: "Essential AI assistant and scheduled routines for personal workflows.",
       features: [
-        "50 AI queries per month",
-        "Summarize last 3 unread emails",
-        "View upcoming schedule",
-        "Standard support responses",
+        "30 AI queries per month",
+        "Up to 3 active automations",
+        "Starter routine templates (Briefings, Follow-ups)",
+        "Gmail & Google Calendar AI summaries",
+        "Standard support",
       ],
       cta: "Current Plan",
       primary: false,
     },
     {
       name: "Pro",
-      price: billingCycle === "monthly" ? "15" : "12",
-      description: "Advanced AI assistance and fully automated workflows.",
+      price: billingCycle === "monthly" ? "399" : "319",
+      description: "Advanced AI assistance with unlimited autonomous routines and all models.",
       features: [
-        "Unlimited AI assistant queries",
-        "Full Gmail write/read synchronization",
-        "Google Calendar auto-scheduling",
-        "Smarter multi-turn agent memory",
-        "Draft complex communications",
+        "Unlimited active automations & cron schedules",
+        "All AI models (GPT-5.4, Claude Opus, Gemini Flash)",
+        "Unlimited AI chat assistant queries",
+        "Autonomous multi-step tool execution",
+        "Full Gmail & Google Calendar synchronization",
+        "Complete Markdown run reports & inspection",
         "Priority email support",
       ],
       cta: "Upgrade to Pro",
@@ -48,14 +50,14 @@ export default function PricingPage() {
     {
       name: "Enterprise",
       price: "Custom",
-      description: "Custom connectors, robust security controls, and SLA support.",
+      description: "Custom connectors, high-frequency routines, and enterprise security.",
       features: [
+        "High-frequency custom cron schedules",
+        "Custom automation concurrency limits",
         "Dedicated custom AI agent routing",
         "On-premise / self-hosted options",
-        "Unrestricted API integrations",
-        "Enterprise-grade data encryption",
-        "Dedicated account representative",
-        "Custom SLA guarantees",
+        "Enterprise-grade data encryption & audit logs",
+        "Dedicated account representative & custom SLA",
       ],
       cta: "Contact Sales",
       primary: false,
@@ -127,7 +129,7 @@ export default function PricingPage() {
               <div className="flex items-baseline mb-6 border-b border-zinc-100 dark:border-zinc-900 pb-6">
                 {plan.price !== "Custom" ? (
                   <>
-                    <span className="text-4xl font-extrabold text-zinc-900 dark:text-zinc-100">${plan.price}</span>
+                    <span className="text-4xl font-extrabold text-zinc-900 dark:text-zinc-100">₹{plan.price}</span>
                     <span className="text-sm text-zinc-400 dark:text-zinc-500 ml-1">/ month</span>
                   </>
                 ) : (

@@ -135,14 +135,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: <Calendar className="w-5 h-5 transition-colors" />
     },
     {
-      name: "Activity",
-      href: "/activity",
-      icon: <Activity className="w-5 h-5 transition-colors" />
-    },
-    {
       name: "Automations",
       href: "/automations",
       icon: <Zap className="w-5 h-5 transition-colors" />
+    },
+    {
+      name: "Activity",
+      href: "/activity",
+      icon: <Activity className="w-5 h-5 transition-colors" />
     },
     {
       name: "Pricing",
@@ -172,9 +172,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         } overflow-hidden`}>
           {/* Logo & Theme Toggle */}
           <div className={`flex items-center justify-between gap-3 px-2 mb-6 whitespace-nowrap ${!isSidebarOpen ? 'justify-center' : ''}`}>
-            <div className="flex items-center gap-3 cursor-pointer">
-              <Link href="/chat" className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center font-bold text-white dark:text-zinc-900 text-sm">
-                C
+            <div className="flex items-center gap-2.5 cursor-pointer">
+              <Link href="/chat" className="flex items-center justify-center shrink-0">
+                <img src="/image.png" alt="Camail" className="w-8 h-8 object-contain" />
               </Link>
               {isSidebarOpen && (
                 <Link href="/chat" className="font-bold text-lg text-zinc-900 dark:text-zinc-100 tracking-tight">
@@ -406,8 +406,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                   <p>{isSidebarOpen ? "Collapse Sidebar" : "Expand Sidebar"}</p>
                 </TooltipContent>
               </Tooltip>
-              <button className="font-bold text-xl tracking-tight text-zinc-800 dark:text-zinc-100 md:hidden">
-                Camail
+              <button className="font-bold text-xl tracking-tight text-zinc-800 dark:text-zinc-100 md:hidden flex items-center gap-2">
+                <img src="/image.png" alt="Camail" className="w-7 h-7 object-contain" />
+                <span>Camail</span>
               </button>
             </div>
             

@@ -14,7 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 export const metadata: Metadata = {
   title: "Camail",
   description: "AI assistant for your Gmail and Calendar",
-  icons: [{ rel: "icon", url: "/favicon.ico" }],
+  icons: [{ rel: "icon", url: "/image.png" }],
 };
 
 export default function RootLayout({

@@ -526,7 +526,6 @@ export default function ChatPage() {
             </form>
           </div>
           <div className="text-center mt-3 text-[10px] text-zinc-450 font-light">
-            Powered by Corsair MCP and Better Auth.{" "}
             <Link className="text-zinc-850 dark:text-zinc-200 hover:underline font-semibold mx-1" href="/docs">Documentation</Link> ·{" "}
             <Link className="text-zinc-850 dark:text-zinc-200 hover:underline font-semibold mx-1" href="/privacy">Privacy Policy</Link> ·{" "}
             <Link className="text-zinc-850 dark:text-zinc-200 hover:underline font-semibold mx-1" href="/terms">Terms of Service</Link>
